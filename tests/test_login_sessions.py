@@ -1,3 +1,4 @@
+import re
 from datetime import timedelta
 
 from app import db
@@ -36,7 +37,7 @@ def test_logout_ends_only_that_session(app, barber):
     login(phone, "alex", "password123")
     login(tablet, "alex", "password123")
 
-    phone.get("/logout")
+    phone.post("/logout")
 
     assert not _is_logged_in(phone)
     assert _is_logged_in(tablet)
@@ -150,13 +151,14 @@ def test_every_admin_table_has_a_header_for_every_column(app, barber, admin_barb
     html = client.get("/admin/").data.decode()
 
     tables = html.split("<table")[1:]
-    assert len(tables) == 3
+    assert len(tables) == 4  # locations, device links, barbers, activity
     for table in tables:
         table = table[:table.index("</table>")]
         header = table[table.index("<thead>"):table.index("</thead>")]
         first_row = table[table.index("<tbody>"):]
         first_row = first_row[:first_row.index("</tr>")]
-        assert header.count("<th>") + header.count("<th ") == first_row.count("<td"), header
+        cells = sum(int(span or 1) for span in re.findall(r'<td(?:[^>]*colspan="(\d+)")?', first_row))
+        assert header.count("<th>") + header.count("<th ") == cells, header
 
     barbers_header = html[html.index('data-tab-panel="barbers"'):]
     barbers_header = barbers_header[:barbers_header.index("</thead>")]

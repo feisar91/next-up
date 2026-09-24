@@ -6,7 +6,9 @@
   const waitingEmpty = document.getElementById("waiting-empty");
 
   socket.on("connect", function () {
-    socket.emit("join", { location: window.LOCATION_SLUG });
+    socket.emit("join", { location: window.LOCATION_SLUG }, function (ack) {
+      window.checkAppVersion(ack);
+    });
   });
 
   socket.on("queue_update", function (state) {
@@ -19,6 +21,12 @@
     const form = document.createElement("form");
     form.method = "post";
     form.action = action;
+
+    const csrf = document.createElement("input");
+    csrf.type = "hidden";
+    csrf.name = "csrf_token";
+    csrf.value = document.querySelector('meta[name="csrf-token"]').content;
+    form.appendChild(csrf);
     if (confirmText) form.dataset.confirm = confirmText;
 
     const btn = document.createElement("button");

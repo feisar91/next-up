@@ -118,7 +118,7 @@ def test_metrics_reflects_completed_cuts(app, client, admin_barber, barber, loca
     client.post(f"/staff/mainstreet/call/{entry_id}")
     client.post(f"/staff/mainstreet/complete/{entry_id}")
 
-    client.get("/logout")
+    client.post("/logout")
     login(client, admin_barber["username"], admin_barber["password"])
     resp = client.get("/admin/metrics")
     assert resp.status_code == 200
@@ -195,7 +195,7 @@ def test_removed_location_excluded_from_location_picker(app, client, admin_barbe
     login(client, admin_barber["username"], admin_barber["password"])
     client.post(f"/admin/locations/{locations['riverside']}/toggle-active")
     client.get("/admin/")  # consume the "has been removed" flash so it doesn't leak into the next assertion
-    client.get("/logout")
+    client.post("/logout")
 
     resp = login(client, barber["username"], barber["password"])
     assert b"Riverside" not in resp.data
@@ -208,7 +208,7 @@ def test_removed_default_location_is_not_offered_as_one_click_continue(
     # picker doesn't still offer a dead one-click "Continue to Main Street".
     login(client, admin_barber["username"], admin_barber["password"])
     client.post(f"/admin/locations/{locations['mainstreet']}/toggle-active")
-    client.get("/logout")
+    client.post("/logout")
 
     resp = login(client, barber["username"], barber["password"])
     assert b"Continue to Main Street" not in resp.data
@@ -277,7 +277,7 @@ def test_deleting_a_barber_keeps_their_queue_history_but_clears_the_name_link(
         entry = QueueEntry.query.filter_by(customer_name="Jamie").first()
         entry_id = entry.id
     client.post(f"/staff/mainstreet/call/{entry_id}")
-    client.get("/logout")
+    client.post("/logout")
 
     login(client, admin_barber["username"], admin_barber["password"])
     client.post(f"/admin/barbers/{barber['id']}/toggle-active")
@@ -376,7 +376,7 @@ def test_create_barber_forces_password_change_on_first_login(app, client, admin_
             "confirm_password": "temp12345",
         },
     )
-    client.get("/logout")
+    client.post("/logout")
 
     resp = login(client, "newguy", "temp12345")
     assert b"Set a New Password" in resp.data

@@ -234,13 +234,28 @@ label {
   color: var(--brand-grey-light);
 }
 
-.top-bar a {
+.top-bar a,
+.nav-button {
   color: var(--brand-off-white);
   text-decoration: none;
   font-family: var(--font-display);
   text-transform: uppercase;
   font-size: 0.9rem;
   white-space: nowrap;
+}
+
+/* Log out is a POST (CSRF-protected), so it's a button styled as a nav link. */
+.nav-form {
+  display: inline;
+  margin: 0;
+}
+
+.nav-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  line-height: inherit;
 }
 
 @media (max-width: 480px) {
@@ -750,6 +765,45 @@ label {
 
 .device-link a {
   text-decoration: none;
+}
+
+.device-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--brand-grey);
+}
+
+.device-status::before {
+  content: "";
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--brand-grey-light);
+  flex-shrink: 0;
+}
+
+.device-status-online {
+  color: #256a2e;
+}
+
+.device-status-online::before {
+  background: #2e9e4f;
+}
+
+.device-status-offline {
+  color: var(--brand-red-dark);
+}
+
+.device-status-offline::before {
+  background: var(--brand-red);
+}
+
+.device-status-note {
+  margin: 0;
+  font-size: 0.8rem;
 }
 
 .device-link code {

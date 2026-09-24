@@ -27,6 +27,7 @@
   <script>
     window.LOCATION_SLUG = "{{ location.slug }}";
     window.CURRENT_BARBER_ID = {{ current_user.id }};
+    window.APP_VERSION = "{{ app_version }}";
     // entry_id=0 renders as a single trailing "0" character; slicing it off gives a
     // stable prefix to append the real id to, without guessing at slug/path contents.
     window.URLS = {
@@ -35,6 +36,7 @@
       remove: "{{ url_for('staff.remove_customer', location_slug=location.slug, entry_id=0) }}".slice(0, -1)
     };
   </script>
+  <script src="{{ url_for('static', filename='js/app-version.js') }}"></script>
   <script src="{{ url_for('static', filename='js/animated-list.js') }}"></script>
   <script src="{{ url_for('static', filename='js/staff.js') }}"></script>
 {% endblock %}

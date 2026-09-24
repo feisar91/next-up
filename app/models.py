@@ -31,6 +31,10 @@ class Location(db.Model):
     # of the URL (bookmarked once on the device) is the access control.
     kiosk_token = db.Column(db.String(64), nullable=False, unique=True, default=generate_token)
     display_token = db.Column(db.String(64), nullable=False, unique=True, default=generate_token)
+    # When a kiosk / TV screen last connected or disconnected (see app/sockets.py),
+    # for the "Offline since ..." status on the admin Device Links tab.
+    kiosk_last_seen_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    display_last_seen_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
     barbers = db.relationship(
         "Barber", back_populates="default_location", foreign_keys="Barber.default_location_id"
@@ -144,6 +148,33 @@ class LoginSession(db.Model):
     user_agent = db.Column(db.String(255))
 
     barber = db.relationship("Barber", back_populates="login_sessions")
+
+
+class LoginAttempt(db.Model):
+    """A failed staff login, kept for LOGIN_LOCKOUT_MINUTES to rate-limit guessing
+    (see app/login_throttle.py)."""
+
+    __tablename__ = "login_attempts"
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=False, index=True)
+    ip_address = db.Column(db.String(45), nullable=False, index=True)
+    attempted_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, index=True)
+
+
+class AdminAction(db.Model):
+    """One entry in the admin activity log (see app/audit.py). Names are copied in
+    at the time, so the log still reads correctly after a barber or location is
+    renamed or deleted."""
+
+    __tablename__ = "admin_actions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, index=True)
+    actor_id = db.Column(db.Integer, db.ForeignKey("barbers.id", ondelete="SET NULL"), nullable=True)
+    actor_name = db.Column(db.String(120), nullable=False)
+    action = db.Column(db.String(64), nullable=False, index=True)
+    summary = db.Column(db.String(500), nullable=False)
 
 
 class Setting(db.Model):

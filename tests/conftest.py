@@ -11,11 +11,13 @@ def app():
     app = create_app(TestConfig)
 
     # This fixture keeps one app context open for the whole test, and test requests
-    # reuse it, so Flask-Login's per-context user cache (g._login_user) would leak
-    # between requests and between test clients. Real requests each get a fresh
-    # context, so clear it first thing (ahead of the app's own before_request hooks).
+    # reuse it, so per-context caches on g would leak between requests and between
+    # test clients: Flask-Login's user (g._login_user) and Flask-WTF's CSRF token
+    # (g.csrf_token). Real requests each get a fresh context, so clear them first
+    # thing (ahead of the app's own before_request hooks).
     def reset_login_cache():
         g.pop("_login_user", None)
+        g.pop("csrf_token", None)
 
     app.before_request_funcs.setdefault(None, []).insert(0, reset_login_cache)
 
@@ -97,3 +99,13 @@ def display_url(app, slug):
     with app.app_context():
         location = Location.query.filter_by(slug=slug).first()
         return f"/display/{slug}/{location.display_token}"
+
+
+@pytest.fixture(autouse=True)
+def reset_device_connections():
+    # The connected-screens registry in app.sockets is process-wide; start each test empty.
+    from app import sockets
+
+    sockets._device_connections.clear()
+    yield
+    sockets._device_connections.clear()

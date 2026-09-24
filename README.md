@@ -14,6 +14,17 @@ Live updates across all screens are pushed over Socket.IO - no polling, no manua
 
 The kiosk tablet and TV display run unattended with no one to log in on them, but the app is centrally hosted - so instead of being open to anyone who finds the URL, each location has its own long random `kiosk_token` / `display_token` baked into its URL (e.g. `/kiosk/mainstreet/Xy7f...`). Get the exact links for each location from `/admin/` under "Device Links", and set one as the home page/bookmark on that location's tablet and TV. If a link ever leaks, regenerate it from the same page - the old link stops working immediately. The Socket.IO layer enforces this too (a raw websocket connection can't join a location's live feed without either that location's display token or an authenticated staff session), not just the page route.
 
+The Device Links tab shows whether each shop's kiosk and TV are connected right now ("Online", "Offline since 3:05 pm" or "Never connected"), and warns if more than one screen is using the same link. Regenerating a link, or removing a location, immediately disconnects any screen still open on the old link.
+
+After a deploy, open kiosk, TV and staff dashboard screens reload themselves when their live connection comes back, so nobody has to refresh the shop devices by hand. A kiosk waits until nobody is partway through typing a name.
+
+### Security
+
+- Every form is CSRF-protected (Flask-WTF), and logging out is a POST.
+- Staff logins are rate limited: after 5 failed attempts for a username, or 20 from one IP address, within 15 minutes, further attempts are refused until the window passes. All three numbers can be changed in `.env` (see `.env.example`).
+- The admin **Activity** tab lists every change made from the admin area or with `flask reset-admin-password`: who did it, when, and what changed (the latest 100 entries).
+- If the app sits behind a reverse proxy, set `BEHIND_PROXY=true` so the rate limit sees visitors' real IP addresses instead of the proxy's.
+
 ## Stack
 
 Flask + Flask-SQLAlchemy + Flask-Migrate + PostgreSQL + Flask-SocketIO (threading mode, via `simple-websocket` - no eventlet/gevent required) + Flask-Login. Server-rendered templates, vanilla JS - no Node/frontend build step.
@@ -53,14 +64,14 @@ Postgres isn't published to the host; it's only reachable by the app container. 
 docker compose exec app python -m pytest
 ```
 
-Tests run against in-memory SQLite (see `config.TestConfig`), so they don't touch the Postgres data.
+Tests run against in-memory SQLite (see `config.TestConfig`), so they don't touch the Postgres data. GitHub Actions runs the same suite on every push and pull request (`.github/workflows/tests.yml`). Any warning during a test run counts as a failure (`pytest.ini`), so deprecations get fixed as they appear.
 
 ## Deploying to a VPS
 
 1. Install Docker, clone the repo, optionally create `.env` (see `.env.example` - at least set `POSTGRES_PASSWORD` and `APP_PORT`), and `docker compose up -d --build`. `restart: unless-stopped` keeps both containers running across reboots - no systemd unit needed.
 2. The container runs Gunicorn with a single worker and multiple threads (`-k gthread -w 1 --threads 8`). Keep it at one worker unless you introduce a message queue (e.g. Redis) for Socket.IO to coordinate broadcasts across multiple worker processes - with a single small VPS serving 3 shops, one process is plenty.
 3. Login cookies are marked `Secure` (HTTPS only) by default. If you serve the app over plain HTTP, set `SESSION_COOKIE_SECURE=false` in `.env`, or barbers won't be able to stay logged in.
-4. Put **Nginx** (or another reverse proxy handling TLS) in front of the app port, with WebSocket upgrade headers passed through. Consider setting `APP_PORT=127.0.0.1:8000` in `.env` so the app is only reachable through the proxy.
+4. Put **Nginx** (or another reverse proxy handling TLS) in front of the app port, with WebSocket upgrade headers passed through. Consider setting `APP_PORT=127.0.0.1:8000` in `.env` so the app is only reachable through the proxy, and set `BEHIND_PROXY=true` so login rate limiting sees real client IPs.
    ```nginx
    location / {
        proxy_pass http://127.0.0.1:8000;
@@ -80,4 +91,7 @@ Point each shop's tablet browser at its Kiosk link and each TV's browser (or a c
 - **Barber** - an individual staff login. Any active barber can work any location (chosen at login); `default_location_id` just pre-selects one on the picker. `is_admin` grants access to `/admin` and `/admin/metrics`. The "On Kiosk" switch in the admin barber table (`show_on_kiosk`) keeps them off the kiosk's preferred-barber list, e.g. an admin hiding themselves for a while. Everyone can change their own display name from their Profile page.
 - **QueueEntry** - one customer's place in a location's queue: `waiting → in_progress → done`, or `cancelled` if removed as a no-show.
 - **LoginSession** - one logged-in device for a barber. Logins expire after 12 hours without activity (`SESSION_LIFETIME_HOURS`). The admin barber table shows who is logged in and on duty where. Its Log Out button ends a barber's sessions and takes them off duty. For a barber who isn't logged in, Log In puts them on duty at a chosen shop without a device (e.g. a forgotten phone), so they show on that kiosk until logged out. Logging out, a password reset, or deactivation also ends sessions.
+- **AdminAction** - one entry in the admin activity log. Stores the admin's name and a plain-English summary, so entries still read correctly after someone is renamed or deleted.
 - **Setting** - shop-wide key/value settings edited from `/admin/` (currently just `timezone`).
+
+Ideas for future work are listed in [ROADMAP.md](ROADMAP.md).
