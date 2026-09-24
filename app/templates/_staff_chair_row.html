@@ -1,0 +1,11 @@
+<div class="staff-row" data-key="{{ entry.id }}">
+  <div>
+    <strong>{{ entry.customer_name }}</strong>
+    <div class="meta">with {{ entry.called_by }}</div>
+  </div>
+  <div class="staff-actions">
+    <form method="post" action="{{ url_for('staff.complete_customer', location_slug=location.slug, entry_id=entry.id) }}">
+      <button type="submit" class="btn">Complete</button>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+{% block title %}Admin - Barber on George{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% block content %}
+  <div class="top-bar" style="margin-bottom:1rem;">
+    <h1 style="margin:0;">Admin</h1>
+    <a href="{{ url_for('metrics.metrics') }}" class="btn btn-secondary">View Metrics</a>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button type="button" class="tab-btn" data-tab="locations" role="tab">Locations</button>
+    <button type="button" class="tab-btn" data-tab="device-links" role="tab">Device Links</button>
+    <button type="button" class="tab-btn" data-tab="barbers" role="tab">Barbers</button>
+    <button type="button" class="tab-btn" data-tab="settings" role="tab">Settings</button>
+  </div>
+
+  <div class="tab-panel" data-tab-panel="locations">
+    <div class="card">
+      <h2>Locations</h2>
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Slug</th>
+              <th>Address</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for location in locations %}
+              <tr>
+                <td>{{ location.name }}</td>
+                <td>{{ location.slug }}</td>
+                <td>{{ location.address or "-" }}</td>
+                <td>{{ "Active" if location.active else "Inactive" }}</td>
+                <td>
+                  <div class="row-actions">
+                    <form method="post" action="{{ url_for('admin.toggle_location_active', location_id=location.id) }}" {% if location.active %}data-confirm="Remove {{ location.name }}? Its kiosk and TV display links will stop working immediately, and it will disappear from the staff location picker."{% endif %}>
+                      <button type="submit" class="btn btn-danger">{{ "Remove" if location.active else "Restore" }}</button>
+                    </form>
+                    {% if not location.active %}
+                      <form method="post" action="{{ url_for('admin.delete_location', location_id=location.id) }}" data-confirm="Permanently delete {{ location.name }}? This can't be undone. Locations with any check-in history can't be deleted - only ones that were never used.">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                      </form>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="5" class="meta">No locations yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <form method="post" action="{{ url_for('admin.create_location') }}" style="margin-top:1.5rem;">
+        <div class="field">
+          <label for="name">Name</label>
+          <input type="text" id="name" name="name" required>
+        </div>
+        <div class="field">
+          <label for="slug">Slug (used in URLs, e.g. "kings-meadows")</label>
+          <input type="text" id="slug" name="slug" required>
+        </div>
+        <div class="field">
+          <label for="address">Address</label>
+          <input type="text" id="address" name="address">
+        </div>
+        <button type="submit" class="btn">Add Location</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="tab-panel" data-tab-panel="device-links">
+    <div class="card">
+      <h2>Device Links</h2>
+      <p class="meta" style="margin-top:-0.5rem;">
+        These links are secret - anyone who has one can check customers in (Kiosk) or see who's waiting (TV Display) at
+        that location, no login required. Set one as the home page / bookmark on that location's tablet or TV. If a link
+        ever leaks, regenerate it and update the device.
+      </p>
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Location</th>
+              <th>Kiosk URL</th>
+              <th>TV Display URL</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for location in active_locations %}
+              {% set kiosk_url = url_for('kiosk.check_in', location_slug=location.slug, token=location.kiosk_token, _external=True) %}
+              {% set display_url = url_for('display.show', location_slug=location.slug, token=location.display_token, _external=True) %}
+              <tr>
+                <td>{{ location.name }}</td>
+                <td>
+                  <div class="device-link">
+                    <a href="{{ kiosk_url }}" target="_blank" rel="noopener noreferrer"><code>{{ kiosk_url }}</code></a>
+                    <div class="row-actions">
+                      <button type="button" class="btn btn-secondary" data-copy="{{ kiosk_url }}">Copy</button>
+                      <form method="post" action="{{ url_for('admin.regenerate_kiosk_token', location_id=location.id) }}" data-confirm="This breaks the current kiosk link for {{ location.name }} immediately. Continue?">
+                        <button type="submit" class="btn btn-danger">Regenerate</button>
+                      </form>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="device-link">
+                    <a href="{{ display_url }}" target="_blank" rel="noopener noreferrer"><code>{{ display_url }}</code></a>
+                    <div class="row-actions">
+                      <button type="button" class="btn btn-secondary" data-copy="{{ display_url }}">Copy</button>
+                      <form method="post" action="{{ url_for('admin.regenerate_display_token', location_id=location.id) }}" data-confirm="This breaks the current TV display link for {{ location.name }} immediately. Continue?">
+                        <button type="submit" class="btn btn-danger">Regenerate</button>
+                      </form>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="3" class="meta">No active locations.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" data-tab-panel="barbers">
+    <div class="card">
+      <h2>Barbers</h2>
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Username</th>
+              <th>Default Location</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Logged In</th>
+              <th class="cell-center" title="Whether customers can pick them as their preferred barber on the check-in kiosk">On Kiosk</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for barber in barbers %}
+              <tr>
+                <td>{{ barber.name }}</td>
+                <td>{{ barber.username }}</td>
+                <td>{{ barber.default_location.name if barber.default_location else "-" }}</td>
+                <td>{{ "Admin" if barber.is_admin else "Barber" }}</td>
+                <td>{{ "Active" if barber.active else "Inactive" }}</td>
+                <td>
+                  {% set login_info = logged_in.get(barber.id) %}
+                  {% if login_info or barber.on_duty_location %}
+                    {% if barber.on_duty_location %}
+                      On duty at {{ barber.on_duty_location.name }}
+                    {% else %}
+                      Yes
+                    {% endif %}
+                    <div class="meta nowrap">
+                      {% if login_info %}
+                        {% set device_count, last_seen = login_info %}
+                        {% if device_count > 1 %}{{ device_count }} devices, {% endif %}active {{ last_seen | local_time }}
+                      {% else %}
+                        Logged in by an admin, no device
+                      {% endif %}
+                    </div>
+                    {% if barber.id != current_user.id %}
+                      <form method="post" class="cell-action" action="{{ url_for('admin.force_logout_barber', barber_id=barber.id) }}" data-confirm="Log {{ barber.name }} out on all their devices and take them off duty?">
+                        <button type="submit" class="btn btn-danger">Log Out</button>
+                      </form>
+                    {% endif %}
+                  {% else %}
+                    <span class="meta">No</span>
+                    {% if barber.active and active_locations %}
+                      {% set default_ids = active_locations | map(attribute='id') | list %}
+                      <form method="post" class="cell-action" action="{{ url_for('admin.put_barber_on_duty', barber_id=barber.id) }}"
+                            data-confirm="Log {{ barber.name }} in so customers can pick them on the kiosk. Which shop are they working at?"
+                            data-confirm-fields="#log-in-location-fields" data-confirm-label="Log In">
+                        <input type="hidden" name="location_id" value="{{ barber.default_location_id if barber.default_location_id in default_ids else active_locations[0].id }}">
+                        <button type="submit" class="btn btn-secondary">Log In</button>
+                      </form>
+                    {% endif %}
+                  {% endif %}
+                </td>
+                <td class="cell-center">
+                  <form method="post" action="{{ url_for('admin.toggle_barber_kiosk', barber_id=barber.id) }}">
+                    <button type="submit" class="switch" role="switch" aria-checked="{{ 'true' if barber.show_on_kiosk else 'false' }}"
+                            aria-label="Show {{ barber.name }} on check-in kiosk"
+                            title="{{ 'Shown on' if barber.show_on_kiosk else 'Hidden from' }} the check-in kiosk. Click to {{ 'hide' if barber.show_on_kiosk else 'show' }}.">
+                      <span class="switch-track"><span class="switch-thumb"></span></span>
+                    </button>
+                  </form>
+                </td>
+                <td>
+                  <div class="row-actions">
+                    <a href="{{ url_for('admin.edit_barber', barber_id=barber.id) }}" class="btn btn-secondary">Edit</a>
+                    {% if barber.id != current_user.id %}
+                      <a href="{{ url_for('admin.reset_barber_password', barber_id=barber.id) }}" class="btn btn-secondary">Reset Password</a>
+                      <form method="post" action="{{ url_for('admin.toggle_barber_active', barber_id=barber.id) }}">
+                        <button type="submit" class="btn btn-danger">{{ "Deactivate" if barber.active else "Activate" }}</button>
+                      </form>
+                    {% endif %}
+                    {% if not barber.active %}
+                      <form method="post" action="{{ url_for('admin.delete_barber', barber_id=barber.id) }}" data-confirm="Permanently delete {{ barber.name }}? This can't be undone. Their past check-ins stay on record but will show as 'Unassigned'.">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                      </form>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="8" class="meta">No barbers yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <template id="log-in-location-fields">
+        <div class="field">
+          <label for="log-in-location">Location</label>
+          <select id="log-in-location" name="location_id">
+            {% for location in active_locations %}
+              <option value="{{ location.id }}">{{ location.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </template>
+
+      <h3 style="margin-top:1.5rem;">New Barber</h3>
+      <form method="post" action="{{ url_for('admin.create_barber') }}">
+        <div class="field">
+          <label for="b-name">Name</label>
+          <input type="text" id="b-name" name="name" required>
+        </div>
+        <div class="field">
+          <label for="b-username">Username</label>
+          <input type="text" id="b-username" name="username" required>
+        </div>
+        <div class="field">
+          <label for="b-password">Temporary password</label>
+          <input type="password" id="b-password" name="password" required autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label for="b-confirm-password">Confirm temporary password</label>
+          <input type="password" id="b-confirm-password" name="confirm_password" required autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label for="b-location">Default location (optional - they'll pick one each login regardless)</label>
+          <select id="b-location" name="default_location_id">
+            <option value="">No default</option>
+            {% for location in active_locations %}
+              <option value="{{ location.id }}">{{ location.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label><input type="checkbox" name="is_admin" style="width:auto;display:inline-block;"> Grant admin access</label>
+        </div>
+        <div class="field">
+          <label><input type="checkbox" name="show_on_kiosk" style="width:auto;display:inline-block;" checked> Show on check-in kiosk (customers can pick them as their preferred barber)</label>
+        </div>
+        <button type="submit" class="btn">Add Barber</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="tab-panel" data-tab-panel="settings">
+    <div class="card">
+      <h2>Settings</h2>
+      <form method="post" action="{{ url_for('admin.update_settings') }}">
+        <div class="field">
+          <label for="timezone">Timezone</label>
+          <select id="timezone" name="timezone">
+            {% for tz in timezone_choices %}
+              <option value="{{ tz }}" {% if tz == timezone_name %}selected{% endif %}>{{ tz.replace("_", " ") }}</option>
+            {% endfor %}
+          </select>
+          <p class="meta" style="margin:0.4rem 0 0;">Used on the Metrics page to decide where each day starts and ends, and for the busiest-times heatmap. Daylight saving is handled automatically.</p>
+        </div>
+        <button type="submit" class="btn">Save Settings</button>
+      </form>
+    </div>
+  </div>
+{% endblock %}
+{% block extra_js %}
+  <script src="{{ url_for('static', filename='js/admin-tabs.js') }}"></script>
+{% endblock %}

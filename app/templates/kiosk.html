@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Check In - {{ location.name }}</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon-32.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/brand.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/kiosk-display.css') }}">
+</head>
+<body>
+  <div class="kiosk-screen">
+    <div class="kiosk-header">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Barber on George">
+      <p class="kiosk-location-tag">{{ location.name }}</p>
+      <div class="kiosk-header-rule"></div>
+    </div>
+    <div class="kiosk-body">
+      <div class="kiosk-card">
+        {% if confirmation %}
+          <div class="kiosk-confirmation">
+            <div class="confirm-icon">
+              <svg viewBox="0 0 52 52">
+                <circle cx="26" cy="26" r="24"></circle>
+                <path d="M14 27l8 8 16-16"></path>
+              </svg>
+            </div>
+            <div class="position-label">You're checked in, {{ confirmation.name }}</div>
+            <div class="position">#{{ confirmation.position }}</div>
+            <div class="position-label">in line at {{ location.name }}</div>
+            <p class="confirm-note">Take a seat - we'll call your name shortly.</p>
+            <div class="reset-bar"><div class="reset-bar-fill"></div></div>
+          </div>
+          <script>
+            setTimeout(function () {
+              window.location.href = "{{ url_for('kiosk.check_in', location_slug=location.slug, token=token) }}";
+            }, 6000);
+          </script>
+        {% else %}
+          <form class="kiosk-form" method="post">
+            <p class="kiosk-kicker">Walk-In Check-In</p>
+            <h1>Welcome to {{ location.name }}</h1>
+            <div class="field">
+              <label for="customer_name">Your name</label>
+              <input type="text" id="customer_name" name="customer_name" required autofocus placeholder="Enter your name">
+            </div>
+            <div class="field">
+              <label>Preferred barber (optional)</label>
+              <div class="barber-chip-group" id="barber-chip-group">
+                <input class="barber-chip-input" type="radio" name="preferred_barber_id" id="pref-none" value="" checked>
+                <label class="barber-chip" for="pref-none">No preference</label>
+                {% for barber in barbers %}
+                  <input class="barber-chip-input" type="radio" name="preferred_barber_id" id="pref-{{ barber.id }}" value="{{ barber.id }}" data-barber-id="{{ barber.id }}">
+                  <label class="barber-chip" for="pref-{{ barber.id }}" data-barber-id="{{ barber.id }}">{{ barber.name }}</label>
+                {% endfor %}
+              </div>
+            </div>
+            <button type="submit" class="btn">Check In</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+  <script>
+    window.LOCATION_SLUG = "{{ location.slug }}";
+    window.KIOSK_TOKEN = "{{ token }}";
+  </script>
+  <script src="{{ url_for('static', filename='js/interactions.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/kiosk.js') }}"></script>
+</body>
+</html>

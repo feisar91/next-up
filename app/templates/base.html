@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}Barber on George{% endblock %}</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon-32.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/brand.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <header class="site-header">
+    <div class="top-bar">
+      <a href="{{ url_for('staff.landing') if current_user.is_authenticated else url_for('index') }}" class="brand-link">
+        <img src="{{ url_for('static', filename='images/logo-mark.png') }}" alt="Barber on George">
+        <span class="display-font brand-text">Barber on George</span>
+      </a>
+      {% if current_user.is_authenticated %}
+        <nav class="nav-links">
+          <span class="nav-user">{{ current_user.name }}</span>
+          <a href="{{ url_for('staff.choose_location') }}">Change Location</a>
+          <a href="{{ url_for('staff.profile') }}">Profile</a>
+          {% if current_user.is_admin %}
+            <a href="{{ url_for('admin.overview') }}">Admin</a>
+            <a href="{{ url_for('metrics.metrics') }}">Metrics</a>
+          {% endif %}
+          <a href="{{ url_for('auth.logout') }}">Log out</a>
+        </nav>
+      {% endif %}
+    </div>
+  </header>
+
+  <main class="container {% block container_class %}{% endblock %}">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="{{ url_for('static', filename='js/interactions.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
