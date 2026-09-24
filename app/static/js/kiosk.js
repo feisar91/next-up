@@ -5,8 +5,16 @@
   const group = document.getElementById("barber-chip-group");
   if (!group) return;
 
+  // Don't reload for an update while a customer is partway through checking in.
+  function customerIsTyping() {
+    const name = document.querySelector('.kiosk-form input[name="customer_name"]');
+    return Boolean(name && name.value.trim());
+  }
+
   socket.on("connect", function () {
-    socket.emit("join", { location: window.LOCATION_SLUG, token: window.KIOSK_TOKEN });
+    socket.emit("join", { location: window.LOCATION_SLUG, token: window.KIOSK_TOKEN }, function (ack) {
+      window.checkAppVersion(ack, customerIsTyping);
+    });
   });
 
   socket.on("barbers_update", function (state) {

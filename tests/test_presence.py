@@ -24,7 +24,7 @@ def test_barber_appears_on_kiosk_after_visiting_their_dashboard(app, client, loc
 def test_barber_disappears_from_kiosk_after_logout(app, client, locations, barber):
     login(client, barber["username"], barber["password"])
     client.get("/staff/launceston")
-    client.get("/logout")
+    client.post("/logout")
 
     resp = client.get(kiosk_url(app, "launceston"))
     assert b"Alex" not in resp.data
@@ -48,7 +48,7 @@ def test_deactivating_an_on_duty_barber_removes_them_from_kiosk(
 ):
     login(client, barber["username"], barber["password"])
     client.get("/staff/launceston")
-    client.get("/logout")
+    client.post("/logout")
 
     login(client, admin_barber["username"], admin_barber["password"])
     client.post(f"/admin/barbers/{barber['id']}/toggle-active")
@@ -90,7 +90,7 @@ def test_barber_hidden_from_kiosk_is_not_listed_while_on_duty(app, client, locat
 def test_admin_can_toggle_barber_kiosk_visibility(app, client, locations, barber, admin_barber):
     login(client, barber["username"], barber["password"])
     client.get("/staff/launceston")
-    client.get("/logout")
+    client.post("/logout")
     with app.app_context():
         db.session.get(Barber, barber["id"]).on_duty_location_id = locations["launceston"]
         db.session.commit()

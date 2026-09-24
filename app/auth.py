@@ -4,6 +4,7 @@ from flask_login import current_user, login_required
 from app import db
 from app.models import MIN_PASSWORD_LENGTH, Barber
 from app.login_sessions import end_all_sessions, end_current_session, start_session
+from app.login_throttle import clear_failures, lockout_minutes, record_failure
 from app.staff import clear_on_duty
 
 auth_bp = Blueprint("auth", __name__)
@@ -17,15 +18,26 @@ def login():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
+
+        wait = lockout_minutes(username)
+        if wait is not None:
+            flash(
+                f"Too many failed log-in attempts. Try again in {wait} minute{'s' if wait != 1 else ''}.",
+                "error",
+            )
+            return render_template("login.html", username=username), 429
+
         barber = Barber.query.filter_by(username=username, active=True).first()
 
         if barber and barber.check_password(password):
+            clear_failures(username)
             # start_session() starts from an empty session, so a fresh login always
             # re-picks a location - the location picker uses their default (if any)
             # to make this a one-click confirmation, not a chore.
             start_session(barber)
             return redirect(url_for("staff.landing"))
 
+        record_failure(username)
         flash("Incorrect username or password.", "error")
 
     return render_template("login.html")
@@ -53,7 +65,7 @@ def change_password():
     return render_template("change_password.html")
 
 
-@auth_bp.route("/logout")
+@auth_bp.route("/logout", methods=["POST"])
 @login_required
 def logout():
     clear_on_duty(current_user)

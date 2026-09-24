@@ -7,6 +7,7 @@
     <div class="card" style="text-align:center;">
       <p class="meta" style="color:var(--bog-grey);margin-top:0;">Your usual spot</p>
       <form method="post" action="{{ url_for('staff.choose_location') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="location_id" value="{{ default_location.id }}">
         <button type="submit" class="btn" style="width:100%;font-size:1.2rem;">
           Continue to {{ default_location.name }}
@@ -21,6 +22,7 @@
       <div style="display:grid;gap:0.75rem;">
         {% for location in other_locations %}
           <form method="post" action="{{ url_for('staff.choose_location') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="location_id" value="{{ location.id }}">
             <button type="submit" class="btn btn-secondary" style="width:100%;">{{ location.name }}</button>
           </form>

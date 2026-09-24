@@ -8,7 +8,9 @@
 
   socket.on("connect", function () {
     connectionBanner.hidden = true;
-    socket.emit("join", { location: window.LOCATION_SLUG, token: window.DISPLAY_TOKEN });
+    socket.emit("join", { location: window.LOCATION_SLUG, token: window.DISPLAY_TOKEN }, function (ack) {
+      window.checkAppVersion(ack);
+    });
   });
 
   socket.on("disconnect", function () {

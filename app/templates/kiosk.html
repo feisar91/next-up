@@ -41,6 +41,7 @@
           </script>
         {% else %}
           <form class="kiosk-form" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <p class="kiosk-kicker">Walk-In Check-In</p>
             <h1>Welcome to {{ location.name }}</h1>
             <div class="field">
@@ -68,7 +69,9 @@
   <script>
     window.LOCATION_SLUG = "{{ location.slug }}";
     window.KIOSK_TOKEN = "{{ token }}";
+    window.APP_VERSION = "{{ app_version }}";
   </script>
+  <script src="{{ url_for('static', filename='js/app-version.js') }}"></script>
   <script src="{{ url_for('static', filename='js/interactions.js') }}"></script>
   <script src="{{ url_for('static', filename='js/kiosk.js') }}"></script>
 </body>

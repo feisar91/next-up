@@ -1,8 +1,9 @@
-from flask import Flask, redirect, request, url_for
+from flask import Flask, flash, redirect, request, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager, current_user
 from flask_socketio import SocketIO
+from flask_wtf.csrf import CSRFError, CSRFProtect
 
 from config import Config
 
@@ -11,17 +12,53 @@ migrate = Migrate()
 login_manager = LoginManager()
 login_manager.login_view = "auth.login"
 login_manager.login_message = "Please log in to continue."
+csrf = CSRFProtect()
 socketio = SocketIO(async_mode="threading", path="updates")
+
+
+def compute_app_version():
+    """Fingerprint of the app's code, templates and static files. A deploy that
+    changes any of them changes this, which tells open kiosk/TV/staff screens to
+    reload (see app/static/js/app-version.js); a plain restart doesn't."""
+    import hashlib
+    from pathlib import Path
+
+    digest = hashlib.sha256()
+    root = Path(__file__).parent
+    for path in sorted(root.rglob("*")):
+        if path.is_file() and "__pycache__" not in path.parts:
+            digest.update(str(path.relative_to(root)).encode())
+            digest.update(path.read_bytes())
+    return digest.hexdigest()[:12]
 
 
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
+    if app.config.get("BEHIND_PROXY"):
+        from werkzeug.middleware.proxy_fix import ProxyFix
+
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
     socketio.init_app(app)
+    csrf.init_app(app)
+
+    app.config.setdefault("APP_VERSION", compute_app_version())
+
+    @app.url_defaults
+    def version_static_urls(endpoint, values):
+        # ?v=<version> on every static URL, so a deploy can't be undone by a
+        # browser holding on to a cached copy of the old JS/CSS.
+        if endpoint == "static":
+            values.setdefault("v", app.config["APP_VERSION"])
+
+    @app.context_processor
+    def inject_app_version():
+        return {"app_version": app.config["APP_VERSION"]}
 
     from app.login_sessions import load_user
 
@@ -55,6 +92,16 @@ def create_app(config_class=Config):
         if request.endpoint in PASSWORD_CHANGE_EXEMPT_ENDPOINTS:
             return None
         return redirect(url_for("auth.change_password"))
+
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(error):
+        # Usually a page left open across a restart or an expired login: send
+        # them back to where they were (same site only) to try again.
+        flash("That page had expired, so nothing was changed. Please try again.", "error")
+        referrer = request.referrer or ""
+        if referrer.startswith(request.host_url):
+            return redirect(referrer)
+        return redirect(url_for("index"))
 
     @app.template_filter("local_time")
     def local_time(value):

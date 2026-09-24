@@ -3,7 +3,7 @@ import secrets
 
 import click
 
-from app import db
+from app import audit, db
 from app.login_sessions import end_all_sessions
 from app.models import MIN_PASSWORD_LENGTH, Barber, Location
 
@@ -100,6 +100,7 @@ def register_cli(app):
         admin.active = True
         db.session.commit()
         end_all_sessions(admin)
+        audit.record("barber.reset_password", f"Reset the password for {admin.name} from the command line")
 
         click.echo(f"Password reset for '{username}'. Temporary password: {password}")
         click.echo("They'll be asked to choose their own password on next login.")

@@ -1,6 +1,20 @@
 {% extends "base.html" %}
 {% block title %}Admin - Barber on George{% endblock %}
 {% block container_class %}container-wide{% endblock %}
+{% macro device_status_line(status, what) %}
+  <div class="device-status device-status-{{ status.state }}">
+    {% if status.state == "online" %}
+      Online{% if status.count > 1 %} ({{ status.count }} screens){% endif %}
+    {% elif status.state == "offline" %}
+      Offline since {{ status.last_seen | local_time }}
+    {% else %}
+      Never connected
+    {% endif %}
+  </div>
+  {% if status.count > 1 %}
+    <p class="meta device-status-note">More than one screen is using this {{ what }} link. If that's unexpected, regenerate it.</p>
+  {% endif %}
+{% endmacro %}
 {% block content %}
   <div class="top-bar" style="margin-bottom:1rem;">
     <h1 style="margin:0;">Admin</h1>
@@ -12,6 +26,7 @@
     <button type="button" class="tab-btn" data-tab="device-links" role="tab">Device Links</button>
     <button type="button" class="tab-btn" data-tab="barbers" role="tab">Barbers</button>
     <button type="button" class="tab-btn" data-tab="settings" role="tab">Settings</button>
+    <button type="button" class="tab-btn" data-tab="activity" role="tab">Activity</button>
   </div>
 
   <div class="tab-panel" data-tab-panel="locations">
@@ -38,10 +53,12 @@
                 <td>
                   <div class="row-actions">
                     <form method="post" action="{{ url_for('admin.toggle_location_active', location_id=location.id) }}" {% if location.active %}data-confirm="Remove {{ location.name }}? Its kiosk and TV display links will stop working immediately, and it will disappear from the staff location picker."{% endif %}>
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                       <button type="submit" class="btn btn-danger">{{ "Remove" if location.active else "Restore" }}</button>
                     </form>
                     {% if not location.active %}
                       <form method="post" action="{{ url_for('admin.delete_location', location_id=location.id) }}" data-confirm="Permanently delete {{ location.name }}? This can't be undone. Locations with any check-in history can't be deleted - only ones that were never used.">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-danger">Delete</button>
                       </form>
                     {% endif %}
@@ -56,6 +73,7 @@
       </div>
 
       <form method="post" action="{{ url_for('admin.create_location') }}" style="margin-top:1.5rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="field">
           <label for="name">Name</label>
           <input type="text" id="name" name="name" required>
@@ -94,14 +112,17 @@
             {% for location in active_locations %}
               {% set kiosk_url = url_for('kiosk.check_in', location_slug=location.slug, token=location.kiosk_token, _external=True) %}
               {% set display_url = url_for('display.show', location_slug=location.slug, token=location.display_token, _external=True) %}
+              {% set status = device_statuses[location.id] %}
               <tr>
                 <td>{{ location.name }}</td>
                 <td>
                   <div class="device-link">
+                    {{ device_status_line(status.kiosk, "kiosk") }}
                     <a href="{{ kiosk_url }}" target="_blank" rel="noopener noreferrer"><code>{{ kiosk_url }}</code></a>
                     <div class="row-actions">
                       <button type="button" class="btn btn-secondary" data-copy="{{ kiosk_url }}">Copy</button>
                       <form method="post" action="{{ url_for('admin.regenerate_kiosk_token', location_id=location.id) }}" data-confirm="This breaks the current kiosk link for {{ location.name }} immediately. Continue?">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-danger">Regenerate</button>
                       </form>
                     </div>
@@ -109,10 +130,12 @@
                 </td>
                 <td>
                   <div class="device-link">
+                    {{ device_status_line(status.display, "TV display") }}
                     <a href="{{ display_url }}" target="_blank" rel="noopener noreferrer"><code>{{ display_url }}</code></a>
                     <div class="row-actions">
                       <button type="button" class="btn btn-secondary" data-copy="{{ display_url }}">Copy</button>
                       <form method="post" action="{{ url_for('admin.regenerate_display_token', location_id=location.id) }}" data-confirm="This breaks the current TV display link for {{ location.name }} immediately. Continue?">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-danger">Regenerate</button>
                       </form>
                     </div>
@@ -171,6 +194,7 @@
                     </div>
                     {% if barber.id != current_user.id %}
                       <form method="post" class="cell-action" action="{{ url_for('admin.force_logout_barber', barber_id=barber.id) }}" data-confirm="Log {{ barber.name }} out on all their devices and take them off duty?">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-danger">Log Out</button>
                       </form>
                     {% endif %}
@@ -181,6 +205,7 @@
                       <form method="post" class="cell-action" action="{{ url_for('admin.put_barber_on_duty', barber_id=barber.id) }}"
                             data-confirm="Log {{ barber.name }} in so customers can pick them on the kiosk. Which shop are they working at?"
                             data-confirm-fields="#log-in-location-fields" data-confirm-label="Log In">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="location_id" value="{{ barber.default_location_id if barber.default_location_id in default_ids else active_locations[0].id }}">
                         <button type="submit" class="btn btn-secondary">Log In</button>
                       </form>
@@ -189,6 +214,7 @@
                 </td>
                 <td class="cell-center">
                   <form method="post" action="{{ url_for('admin.toggle_barber_kiosk', barber_id=barber.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="switch" role="switch" aria-checked="{{ 'true' if barber.show_on_kiosk else 'false' }}"
                             aria-label="Show {{ barber.name }} on check-in kiosk"
                             title="{{ 'Shown on' if barber.show_on_kiosk else 'Hidden from' }} the check-in kiosk. Click to {{ 'hide' if barber.show_on_kiosk else 'show' }}.">
@@ -202,11 +228,13 @@
                     {% if barber.id != current_user.id %}
                       <a href="{{ url_for('admin.reset_barber_password', barber_id=barber.id) }}" class="btn btn-secondary">Reset Password</a>
                       <form method="post" action="{{ url_for('admin.toggle_barber_active', barber_id=barber.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-danger">{{ "Deactivate" if barber.active else "Activate" }}</button>
                       </form>
                     {% endif %}
                     {% if not barber.active %}
                       <form method="post" action="{{ url_for('admin.delete_barber', barber_id=barber.id) }}" data-confirm="Permanently delete {{ barber.name }}? This can't be undone. Their past check-ins stay on record but will show as 'Unassigned'.">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-danger">Delete</button>
                       </form>
                     {% endif %}
@@ -233,6 +261,7 @@
 
       <h3 style="margin-top:1.5rem;">New Barber</h3>
       <form method="post" action="{{ url_for('admin.create_barber') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="field">
           <label for="b-name">Name</label>
           <input type="text" id="b-name" name="name" required>
@@ -273,6 +302,7 @@
     <div class="card">
       <h2>Settings</h2>
       <form method="post" action="{{ url_for('admin.update_settings') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="field">
           <label for="timezone">Timezone</label>
           <select id="timezone" name="timezone">
@@ -284,6 +314,35 @@
         </div>
         <button type="submit" class="btn">Save Settings</button>
       </form>
+    </div>
+  </div>
+
+  <div class="tab-panel" data-tab-panel="activity">
+    <div class="card">
+      <h2>Activity</h2>
+      <p class="meta">Changes made from this admin area or the command line, newest first. Shows the latest {{ activity_limit }}.</p>
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Who</th>
+              <th>What</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for entry in activity %}
+              <tr>
+                <td class="nowrap">{{ entry.created_at | local_time }}</td>
+                <td class="nowrap">{{ entry.actor_name }}</td>
+                <td>{{ entry.summary }}</td>
+              </tr>
+            {% else %}
+              <tr><td colspan="3" class="meta">Nothing yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 {% endblock %}
