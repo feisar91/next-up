@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}Metrics - Next Up{% endblock %}
+{% block container_class %}container-wide{% endblock %}
+{% block content %}
+  <div class="top-bar" style="margin-bottom:1rem;">
+    <h1 style="margin:0;">Metrics</h1>
+    <a href="{{ url_for('admin.overview') }}" class="btn btn-secondary">Back to Admin</a>
+  </div>
+
+  <form class="metrics-filter" method="get">
+    <label for="days" style="margin:0;">Period</label>
+    <select id="days" name="days" onchange="this.form.submit()">
+      {% for choice in day_range_choices %}
+        <option value="{{ choice }}" {% if choice == days %}selected{% endif %}>Last {{ choice }} days</option>
+      {% endfor %}
+    </select>
+    <span class="metrics-note">Times in {{ timezone_name.replace("_", " ") }} - <a href="{{ url_for('admin.overview', _anchor='settings') }}">change</a></span>
+    <div class="metrics-export">
+      <a href="{{ url_for('metrics.export_visits', days=days) }}" class="btn btn-secondary" download>Download Visits (CSV)</a>
+      <button type="button" class="btn btn-secondary" onclick="window.print()">Print / Save as PDF</button>
+    </div>
+  </form>
+
+  <p class="print-only metrics-print-period">
+    Last {{ days }} days ({{ period_start }} to {{ period_end }}), times in {{ timezone_name.replace("_", " ") }}.
+  </p>
+
+  <div class="stat-tiles">
+    <div class="stat-tile">
+      <p class="stat-label">Cuts</p>
+      <div class="stat-value">{{ total_cuts }}</div>
+    </div>
+    <div class="stat-tile">
+      <p class="stat-label">Avg. wait time</p>
+      <div class="stat-value">
+        {% if avg_wait_minutes is not none %}{{ avg_wait_minutes }}<span class="stat-unit">min</span>{% else %}-{% endif %}
+      </div>
+    </div>
+    <div class="stat-tile">
+      <p class="stat-label">Avg. time in chair</p>
+      <div class="stat-value">
+        {% if avg_service_minutes is not none %}{{ avg_service_minutes }}<span class="stat-unit">min</span>{% else %}-{% endif %}
+      </div>
+    </div>
+    <div class="stat-tile">
+      <p class="stat-label">No-shows / removed</p>
+      <div class="stat-value">{{ no_show_count }}</div>
+    </div>
+    <div class="stat-tile">
+      <p class="stat-label">Asked for a barber</p>
+      <div class="stat-value">
+        {% if requested_pct is not none %}{{ requested_pct }}<span class="stat-unit">%</span>{% else %}-{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card chart-card">
+    <h2>Cuts per day - last {{ days }} days</h2>
+    {% if cuts_series|sum > 0 %}
+      <canvas id="cuts-by-day-chart" role="img" aria-label="Bar chart of completed cuts per day"></canvas>
+    {% else %}
+      <p class="chart-empty">No completed cuts in this period.</p>
+    {% endif %}
+  </div>
+
+  <div class="card chart-card heatmap-card">
+    <div class="chart-card-header">
+      <h2>Busiest times</h2>
+      {% if heatmap_views %}
+        <div class="field heatmap-picker">
+          <label for="heatmap-view" class="visually-hidden">Location</label>
+          <select id="heatmap-view">
+            {% for view in heatmap_views %}
+              <option value="{{ view.slug }}">{{ view.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
+    </div>
+    {% if heatmap_views %}
+      <p class="chart-subtitle">Average check-ins per hour, by day of the week.</p>
+      {% for view in heatmap_views %}
+        <div class="heatmap-view" data-heatmap-view="{{ view.slug }}" {% if not loop.first %}hidden{% endif %}>
+          <h3 class="print-only">{{ view.name }}</h3>
+          <div class="heatmap-scroll">
+            <table class="heatmap">
+              <caption class="visually-hidden">Average check-ins per hour at {{ view.name }}, last {{ days }} days</caption>
+              <thead>
+                <tr>
+                  <th scope="col"><span class="visually-hidden">Day</span></th>
+                  {% for hour in heatmap_hours %}
+                    <th scope="col">{{ hour }}</th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in view.rows %}
+                  <tr>
+                    <th scope="row">{{ row.day }}</th>
+                    {% for cell in row.cells %}
+                      <td class="heat-{{ cell.step }}" tabindex="0"
+                          data-tip-title="{{ cell.label }}"
+                          data-tip-body="{{ cell.avg }} check-ins on average ({{ cell.total }} total)"
+                          aria-label="{{ cell.label }}: {{ cell.avg }} check-ins on average, {{ cell.total }} total"></td>
+                    {% endfor %}
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="heatmap-legend" aria-hidden="true">
+            <span>Quieter</span>
+            {% for step in range(1, heatmap_steps + 1) %}<span class="heat-swatch heat-{{ step }}"></span>{% endfor %}
+            <span>Busier</span>
+            <span class="metrics-note">Busiest hour: {{ view.peak }} check-ins on average - {{ view.total }} check-ins total</span>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="chart-empty">No check-ins in this period.</p>
+    {% endif %}
+  </div>
+
+  <div class="card chart-card">
+    <h2>Cuts by barber</h2>
+    {% if barber_series|sum > 0 %}
+      <canvas id="cuts-by-barber-chart" role="img" aria-label="Bar chart of completed cuts by barber"></canvas>
+    {% else %}
+      <p class="chart-empty">No completed cuts in this period.</p>
+    {% endif %}
+  </div>
+
+  <div class="card chart-card">
+    <h2>Time in chair by barber</h2>
+    {% if service_rows %}
+      <p class="chart-subtitle">Average minutes from being called to finished.</p>
+      {# Horizontal bars: grow with the number of barbers rather than using the fixed chart height. #}
+      <div class="chart-box" style="height: {{ [160, service_rows|length * 44 + 40]|max }}px;">
+        <canvas id="service-by-barber-chart" role="img" aria-label="Bar chart of average time in chair by barber"></canvas>
+      </div>
+      <table class="visually-hidden">
+        <caption>Average time in chair by barber</caption>
+        <thead><tr><th>Barber</th><th>Avg. minutes</th><th>Cuts</th></tr></thead>
+        <tbody>
+          {% for row in service_rows %}
+            <tr><td>{{ row.barber }}</td><td>{{ row.avg_minutes }}</td><td>{{ row.cuts }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="chart-empty">No completed cuts in this period.</p>
+    {% endif %}
+  </div>
+
+  <div class="card chart-card">
+    <h2>Preferred barber demand</h2>
+    {% if preferred_rows %}
+      <p class="chart-subtitle">
+        {{ requested_pct }}% of customers asked for a specific barber.
+        {% if avg_wait_requested is not none and avg_wait_anyone is not none %}
+          They waited {{ avg_wait_requested }} min on average, vs {{ avg_wait_anyone }} min for customers happy with anyone.
+        {% endif %}
+      </p>
+      <div style="overflow-x:auto;">
+        <table class="admin-table metrics-table">
+          <thead>
+            <tr>
+              <th scope="col">Barber</th>
+              <th scope="col" class="num">Requests</th>
+              <th scope="col" class="num">Share of requests</th>
+              <th scope="col" class="num">Served by them</th>
+              <th scope="col" class="num">Avg. wait when requested</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in preferred_rows %}
+              <tr>
+                <td>{{ row.barber }}</td>
+                <td class="num">{{ row.requests }}</td>
+                <td class="num">{{ row.share_pct }}%</td>
+                <td class="num">{% if row.served_pct is not none %}{{ row.served_pct }}%{% else %}-{% endif %}</td>
+                <td class="num">{% if row.avg_wait_minutes is not none %}{{ row.avg_wait_minutes }} min{% else %}-{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="metrics-note" style="margin-bottom:0;">"Served by them" is the share of those customers who ended up in that barber's chair rather than someone else's.</p>
+    {% else %}
+      <p class="chart-empty">No customers asked for a specific barber in this period.</p>
+    {% endif %}
+  </div>
+
+  <div class="card chart-card">
+    <h2>Cuts by location</h2>
+    {% if location_series|sum > 0 %}
+      <canvas id="cuts-by-location-chart" role="img" aria-label="Bar chart of completed cuts by location"></canvas>
+    {% else %}
+      <p class="chart-empty">No completed cuts in this period.</p>
+    {% endif %}
+  </div>
+
+  <div class="heatmap-tooltip" role="tooltip" hidden></div>
+{% endblock %}
+{% block extra_js %}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script>
+    window.METRICS = {
+      dayLabels: {{ day_labels | tojson }},
+      cutsSeries: {{ cuts_series | tojson }},
+      barberLabels: {{ barber_labels | tojson }},
+      barberSeries: {{ barber_series | tojson }},
+      locationLabels: {{ location_labels | tojson }},
+      locationSeries: {{ location_series | tojson }},
+      serviceRows: {{ service_rows | tojson }}
+    };
+  </script>
+  <script src="{{ url_for('static', filename='js/metrics.js') }}"></script>
+{% endblock %}

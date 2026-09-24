@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Next Up - Check-In{% endblock %}
+{% block content %}
+  <div class="card" style="max-width:480px;margin:2rem auto;text-align:center;">
+    <h1>Next Up</h1>
+    <p style="color:var(--brand-grey);">
+      Check-in kiosks and TV displays are set up per-location on their own dedicated devices.
+      Staff can log in below to manage the queue.
+    </p>
+    <a href="{{ url_for('auth.login') }}" class="btn" style="margin-top:0.5rem;">Staff Log In</a>
+  </div>
+{% endblock %}

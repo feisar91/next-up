@@ -1,0 +1,385 @@
+/* Full-screen styling for fixed hardware: the check-in tablet and the TV queue display. */
+
+.kiosk-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--brand-off-white);
+}
+
+.kiosk-header {
+  background: linear-gradient(160deg, var(--brand-charcoal) 0%, #1a1914 100%);
+  padding: 2.5rem 1.5rem 2rem;
+  text-align: center;
+}
+
+.kiosk-header img {
+  height: 52px;
+}
+
+.kiosk-location-tag {
+  margin: 0.85rem 0 0;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  font-size: 0.8rem;
+  color: var(--brand-grey-light);
+}
+
+.kiosk-header-rule {
+  width: 56px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--brand-red);
+  margin: 1rem auto 0;
+}
+
+.kiosk-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1.5rem;
+  background: radial-gradient(circle at 50% 0%, #ffffff 0%, var(--brand-off-white) 65%);
+}
+
+.kiosk-card {
+  width: 100%;
+  max-width: 560px;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 24px 55px rgba(40, 39, 33, 0.14);
+  padding: 2.75rem 2.5rem;
+}
+
+.kiosk-form {
+  width: 100%;
+}
+
+.kiosk-kicker {
+  text-align: center;
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.85rem;
+  color: var(--brand-red);
+}
+
+.kiosk-form h1 {
+  font-size: 2.1rem;
+  text-align: center;
+  margin: 0 0 2rem;
+}
+
+.kiosk-form input[type="text"] {
+  font-size: 1.5rem;
+  padding: 1.1rem 1.25rem;
+  border-radius: 12px;
+  border: 2px solid var(--brand-grey-light);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.kiosk-form input[type="text"]:focus {
+  outline: none;
+  border-color: var(--brand-red);
+  box-shadow: 0 0 0 4px rgba(234, 31, 39, 0.12);
+}
+
+.barber-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.barber-chip-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.barber-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0.7rem 1.3rem;
+  border: 2px solid var(--brand-grey-light);
+  border-radius: 999px;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  color: var(--brand-charcoal);
+  background: #fff;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+    box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.barber-chip:active {
+  transform: scale(0.96);
+}
+
+.barber-chip-input:checked + .barber-chip {
+  background: var(--brand-red);
+  border-color: var(--brand-red);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(234, 31, 39, 0.3);
+}
+
+.barber-chip-input:focus-visible + .barber-chip {
+  outline: 2px solid var(--brand-charcoal);
+  outline-offset: 2px;
+}
+
+.kiosk-form .btn {
+  width: 100%;
+  font-size: 1.6rem;
+  padding: 1.3rem;
+  margin-top: 2rem;
+}
+
+.kiosk-confirmation {
+  text-align: center;
+}
+
+.confirm-icon svg {
+  width: 72px;
+  height: 72px;
+  display: block;
+  margin: 0 auto 1.25rem;
+}
+
+.confirm-icon circle {
+  fill: none;
+  stroke: var(--brand-red);
+  stroke-width: 3;
+  stroke-dasharray: 151;
+  stroke-dashoffset: 151;
+  animation: circleDraw 0.5s ease forwards;
+}
+
+.confirm-icon path {
+  fill: none;
+  stroke: var(--brand-red);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: checkDraw 0.3s ease 0.45s forwards;
+}
+
+@keyframes circleDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes checkDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.kiosk-confirmation .position {
+  font-family: var(--font-display);
+  font-size: 6rem;
+  color: var(--brand-red);
+  line-height: 1;
+  margin: 1rem 0;
+  animation: positionPopIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes positionPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.kiosk-confirmation .position-label {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  color: var(--brand-grey);
+  letter-spacing: 0.08em;
+}
+
+.kiosk-confirmation .confirm-note {
+  color: var(--brand-grey);
+  margin-top: 1.75rem;
+}
+
+.reset-bar {
+  margin-top: 2rem;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--brand-grey-light);
+  overflow: hidden;
+}
+
+.reset-bar-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--brand-red);
+  animation: resetShrink 6s linear forwards;
+}
+
+@keyframes resetShrink {
+  to {
+    width: 0%;
+  }
+}
+
+.connection-banner[hidden] {
+  display: none;
+}
+
+.connection-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  background: var(--brand-red);
+  color: #fff;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.95rem;
+  animation: connectionBannerPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes connectionBannerPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.82;
+  }
+}
+
+/* --- TV display --- */
+
+.display-screen {
+  min-height: 100vh;
+  background: var(--brand-charcoal);
+  color: var(--brand-off-white);
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 3rem;
+  overflow-x: hidden;
+}
+
+.display-screen .display-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.display-screen .display-header img {
+  height: 56px;
+}
+
+.display-screen .display-header h1 {
+  font-size: 2.2rem;
+  margin: 0;
+  color: var(--brand-off-white);
+}
+
+.display-columns {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 3rem;
+  min-height: 0;
+}
+
+.display-columns h2 {
+  font-size: 1.6rem;
+  border-bottom: 3px solid var(--brand-red);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.chair-list,
+.waiting-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.chair-card {
+  background: var(--brand-charcoal-light);
+  border-left: 6px solid var(--brand-red);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.chair-card .barber-name {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--brand-red);
+}
+
+.chair-card .customer-name {
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+.waiting-row {
+  display: grid;
+  grid-template-columns: 3rem 1fr auto;
+  align-items: baseline;
+  gap: 1rem;
+  background: var(--brand-charcoal-light);
+  border-radius: 8px;
+  padding: 0.85rem 1.25rem;
+}
+
+.waiting-row .queue-number {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  color: var(--brand-red);
+}
+
+.waiting-row .customer-name {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.waiting-row .preferred-barber {
+  color: var(--brand-grey-light);
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.empty-state {
+  color: var(--brand-grey-light);
+  font-style: italic;
+  padding: 1rem 0;
+}

@@ -1,0 +1,14 @@
+<div class="staff-row" data-key="{{ entry.id }}">
+  <div>
+    <span class="queue-number">#{{ position }}</span> <strong>{{ entry.customer_name }}</strong>
+    <div class="meta" {% if not entry.preferred_barber %}hidden{% endif %}>Prefers {{ entry.preferred_barber or "" }}</div>
+  </div>
+  <div class="staff-actions">
+    <form method="post" action="{{ url_for('staff.call_customer', location_slug=location.slug, entry_id=entry.id) }}">
+      <button type="submit" class="btn">Call to Chair</button>
+    </form>
+    <form method="post" action="{{ url_for('staff.remove_customer', location_slug=location.slug, entry_id=entry.id) }}" data-confirm="Remove {{ entry.customer_name }} from the queue?">
+      <button type="submit" class="btn btn-danger">Remove</button>
+    </form>
+  </div>
+</div>
