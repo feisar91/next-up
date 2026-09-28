@@ -15,12 +15,6 @@ Put a reverse proxy with TLS in front of the app. Caddy is the simplest because 
 ### Estimated wait time (medium)
 Show "You're #4, about 25 minutes" on the kiosk confirmation, and a wait estimate on the TV. The inputs already exist: queue length, barbers on duty, and each barber's average time in the chair (see `compute_metrics` in `app/metrics.py`).
 
-### Text customers when they're nearly up (medium, running cost)
-Let customers leave an optional phone number on the kiosk, then text them ("You're next at Main Street") when they reach the front of the queue, so they can wait nearby instead of in the shop. Needs an SMS provider such as Twilio (a few cents per message) and a short privacy note on the kiosk.
-
-### Shorter names on the TV (small)
-The TV shows customers' full names to the whole shop. Show a first name and initial ("Jordan S.") on the display, and keep full names on the staff dashboard.
-
 ### Sound when a customer is called (small)
 Play a chime on the TV when someone is called, so customers who are reading or on their phones notice. Some TVs block sound that plays without a tap, so test on the real hardware.
 

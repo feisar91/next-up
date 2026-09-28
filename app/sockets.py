@@ -22,7 +22,23 @@ _device_connections = {}
 _device_lock = threading.Lock()
 
 
-def queue_state(location):
+def location_room(slug):
+    """Every screen at a location: on-duty barber updates."""
+    return f"location-{slug}"
+
+
+def staff_room(slug):
+    """Logged-in staff: the queue with customers' full names."""
+    return f"location-{slug}-staff"
+
+
+def display_room(slug):
+    """The shop TV: the queue with shortened names ("Jordan S."), since the whole
+    shop can read it. The kiosk joins neither queue room; it doesn't show the queue."""
+    return f"location-{slug}-display"
+
+
+def queue_state(location, short_names=False):
     waiting = (
         QueueEntry.query.filter_by(location_id=location.id, status=QueueEntry.STATUS_WAITING)
         .order_by(QueueEntry.checked_in_at.asc())
@@ -35,13 +51,14 @@ def queue_state(location):
     )
     return {
         "location": location.slug,
-        "waiting": [e.to_dict() for e in waiting],
-        "in_progress": [e.to_dict() for e in in_progress],
+        "waiting": [e.to_dict(short_name=short_names) for e in waiting],
+        "in_progress": [e.to_dict(short_name=short_names) for e in in_progress],
     }
 
 
 def broadcast_queue(location):
-    socketio.emit("queue_update", queue_state(location), to=f"location-{location.slug}")
+    socketio.emit("queue_update", queue_state(location), to=staff_room(location.slug))
+    socketio.emit("queue_update", queue_state(location, short_names=True), to=display_room(location.slug))
 
 
 def kiosk_barbers(location):
@@ -61,7 +78,7 @@ def on_duty_state(location):
 
 
 def broadcast_barbers(location):
-    socketio.emit("barbers_update", on_duty_state(location), to=f"location-{location.slug}")
+    socketio.emit("barbers_update", on_duty_state(location), to=location_room(location.slug))
 
 
 @socketio.on("join")
@@ -90,9 +107,13 @@ def handle_join(data):
 
     if device_kind:
         _track_device(location, device_kind)
-    join_room(f"location-{slug}")
-    socketio.emit("queue_update", queue_state(location), to=f"location-{slug}")
-    socketio.emit("barbers_update", on_duty_state(location), to=f"location-{slug}")
+    join_room(location_room(slug))
+    if device_kind == "display":
+        join_room(display_room(slug))
+    elif not device_kind:
+        join_room(staff_room(slug))
+    broadcast_queue(location)
+    broadcast_barbers(location)
     # Returned as the join acknowledgement: screens compare it with the version
     # they were loaded with and reload after a deploy (app/static/js/app-version.js).
     return {"version": current_app.config["APP_VERSION"]}

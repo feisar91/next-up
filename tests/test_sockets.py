@@ -1,10 +1,12 @@
 from unittest.mock import patch
 
+import pytest
 from flask_login import login_user
 
 from app import db, socketio
-from app.models import Barber, Location
-from app.sockets import handle_join
+from app.models import Barber, Location, shorten_name
+from app.sockets import handle_join, queue_state
+from tests.conftest import kiosk_url
 
 
 def _get_tokens(app, slug):
@@ -22,6 +24,65 @@ def test_join_with_valid_display_token_receives_queue_state(app, client, locatio
 
     assert any(evt["name"] == "queue_update" for evt in received)
     sio_client.disconnect()
+
+
+def _check_in(client, app, name):
+    client.post(kiosk_url(app, "mainstreet"), data={"customer_name": name, "preferred_barber_id": ""})
+
+
+def _queue_updates(received):
+    return [evt["args"][0] for evt in received if evt["name"] == "queue_update"]
+
+
+def test_display_receives_shortened_customer_names(app, client, locations):
+    _check_in(client, app, "Jordan Smith")
+    _, display_token = _get_tokens(app, "mainstreet")
+
+    sio_client = socketio.test_client(app, flask_test_client=client)
+    sio_client.emit("join", {"location": "mainstreet", "token": display_token})
+    updates = _queue_updates(sio_client.get_received())
+
+    assert updates
+    assert [e["customer_name"] for e in updates[-1]["waiting"]] == ["Jordan S."]
+    sio_client.disconnect()
+
+
+def test_kiosk_does_not_receive_the_queue(app, client, locations):
+    _check_in(client, app, "Jordan Smith")
+    kiosk_token, _ = _get_tokens(app, "mainstreet")
+
+    sio_client = socketio.test_client(app, flask_test_client=client)
+    sio_client.emit("join", {"location": "mainstreet", "token": kiosk_token})
+    received = sio_client.get_received()
+
+    assert _queue_updates(received) == []
+    assert any(evt["name"] == "barbers_update" for evt in received)
+    sio_client.disconnect()
+
+
+def test_staff_queue_state_keeps_full_names(app, client, locations):
+    _check_in(client, app, "Jordan Smith")
+    with app.app_context():
+        location = Location.query.filter_by(slug="mainstreet").first()
+        assert queue_state(location)["waiting"][0]["customer_name"] == "Jordan Smith"
+        assert queue_state(location, short_names=True)["waiting"][0]["customer_name"] == "Jordan S."
+
+
+@pytest.mark.parametrize(
+    "full, short",
+    [
+        ("Jordan Smith", "Jordan S."),
+        ("jordan smith", "jordan S."),
+        ("  Jordan   van der Berg ", "Jordan B."),
+        ("Jordan", "Jordan"),
+        ("Jordan O'Brien", "Jordan O."),
+        ("Jordan (J)", "Jordan J."),
+        ("Jordan 2", "Jordan"),
+        ("", ""),
+    ],
+)
+def test_shorten_name(full, short):
+    assert shorten_name(full) == short
 
 
 def test_join_with_wrong_token_gets_nothing(app, client, locations):
@@ -69,9 +130,14 @@ def test_authenticated_staff_can_join_without_a_token(app, locations, barber):
         ) as mock_emit:
             handle_join({"location": "riverside"})
 
-        mock_join_room.assert_called_once_with("location-riverside")
-        emitted_events = [call.args[0] for call in mock_emit.call_args_list]
-        assert emitted_events == ["queue_update", "barbers_update"]
+        joined = [call.args[0] for call in mock_join_room.call_args_list]
+        assert joined == ["location-riverside", "location-riverside-staff"]
+        emitted = [(call.args[0], call.kwargs["to"]) for call in mock_emit.call_args_list]
+        assert emitted == [
+            ("queue_update", "location-riverside-staff"),
+            ("queue_update", "location-riverside-display"),
+            ("barbers_update", "location-riverside"),
+        ]
 
 
 def test_unauthenticated_request_context_join_gets_nothing(app, locations):

@@ -3,7 +3,7 @@
 Digital replacement for the paper sign-in pad across a barber shop's locations:
 
 - **Kiosk** (`/kiosk/<location>/<token>`) - tablet check-in screen. Customer enters their name and optionally a preferred barber.
-- **Display** (`/display/<location>/<token>`) - read-only TV screen showing who's in the chair and who's waiting, live.
+- **Display** (`/display/<location>/<token>`) - read-only TV screen showing who's in the chair and who's waiting, live. Because the whole shop can read it, customers appear as first name and last initial ("Jordan S."); the staff dashboard shows full names.
 - **Staff** (`/staff/<location>`) - barber login to call the next customer to the chair, mark them complete, or remove a no-show. Works on a barber's phone or on the tablet.
 - **Admin** (`/admin`) - admin-only screen to add locations, add/edit barber logins, and get each location's Kiosk/Display links.
 - **Metrics** (`/admin/metrics`) - admin-only charts for a chosen period (7/14/30/90 days): cuts per day, by barber and by location, a busiest-times heatmap (per store and combined), average time in chair per barber, preferred-barber demand, plus wait/service time stats. Days and hours use the timezone set under Admin > Settings (default `Australia/Hobart`). For the chosen period you can **Download Visits (CSV)** (one row per check-in: location, customer, preferred barber, who served them, status, times, wait and time in chair) or **Print / Save as PDF** (a print layout of the page, including every location's heatmap).

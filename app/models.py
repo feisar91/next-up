@@ -98,6 +98,16 @@ class Barber(UserMixin, db.Model):
         return f"<Barber {self.username}>"
 
 
+def shorten_name(name):
+    """First name and last initial ("Jordan Smith" -> "Jordan S."), for the shop TV
+    where the whole room can read it. A single name is shown as entered."""
+    parts = name.split()
+    if not parts:
+        return ""
+    initial = next((c for c in parts[-1] if c.isalpha()), None) if len(parts) > 1 else None
+    return f"{parts[0]} {initial.upper()}." if initial else parts[0]
+
+
 class QueueEntry(db.Model):
     __tablename__ = "queue_entries"
 
@@ -121,10 +131,10 @@ class QueueEntry(db.Model):
     preferred_barber = db.relationship("Barber", foreign_keys=[preferred_barber_id])
     called_by = db.relationship("Barber", foreign_keys=[called_by_barber_id])
 
-    def to_dict(self):
+    def to_dict(self, short_name=False):
         return {
             "id": self.id,
-            "customer_name": self.customer_name,
+            "customer_name": shorten_name(self.customer_name) if short_name else self.customer_name,
             "preferred_barber": self.preferred_barber.name if self.preferred_barber else None,
             "status": self.status,
             "checked_in_at": self.checked_in_at.isoformat(),
