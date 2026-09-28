@@ -86,6 +86,10 @@ class Barber(UserMixin, db.Model):
     # still on duty. Separate from show_on_kiosk so a barber can't undo an admin's
     # choice, and cleared when they go off duty so nobody logs in still on break.
     on_break = db.Column(db.Boolean, nullable=False, default=False)
+    # When they went on duty at on_duty_location_id. A barber with no live login
+    # session who has been on duty longer than the session lifetime is taken off
+    # duty automatically (app/off_duty.py), e.g. after an admin "Log In".
+    on_duty_since = db.Column(db.DateTime(timezone=True), nullable=True)
 
     default_location = db.relationship("Location", back_populates="barbers", foreign_keys=[default_location_id])
     on_duty_location = db.relationship("Location", foreign_keys=[on_duty_location_id])
@@ -98,6 +102,10 @@ class Barber(UserMixin, db.Model):
         # Flask-Login refuses to log in inactive users; app/login_sessions.py also
         # rejects their existing sessions on every request.
         return self.active
+
+    def off_duty_after(self, lifetime):
+        """When app/off_duty.py takes them off duty if they have no live login session."""
+        return as_utc(self.on_duty_since) + lifetime if self.on_duty_since else None
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)

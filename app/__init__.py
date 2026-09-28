@@ -86,6 +86,12 @@ def create_app(config_class=Config):
     PASSWORD_CHANGE_EXEMPT_ENDPOINTS = {"auth.change_password", "auth.logout", "static"}
 
     @app.before_request
+    def start_background_checks():
+        from app.off_duty import start_off_duty_checks
+
+        start_off_duty_checks(app)
+
+    @app.before_request
     def enforce_password_change():
         if not current_user.is_authenticated or not current_user.must_change_password:
             return None

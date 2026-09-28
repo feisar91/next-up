@@ -190,6 +190,8 @@
                         {% if device_count > 1 %}{{ device_count }} devices, {% endif %}active {{ last_seen | local_time }}
                       {% else %}
                         Logged in by an admin, no device
+                        {% set off_duty_at = barber.off_duty_after(config.PERMANENT_SESSION_LIFETIME) %}
+                        {% if off_duty_at %}<br>Off duty automatically at {{ off_duty_at | local_time }}{% endif %}
                       {% endif %}
                     </div>
                     {% if barber.id != current_user.id %}
@@ -203,7 +205,7 @@
                     {% if barber.active and active_locations %}
                       {% set default_ids = active_locations | map(attribute='id') | list %}
                       <form method="post" class="cell-action" action="{{ url_for('admin.put_barber_on_duty', barber_id=barber.id) }}"
-                            data-confirm="Log {{ barber.name }} in so customers can pick them on the kiosk. Which shop are they working at?"
+                            data-confirm="Log {{ barber.name }} in so customers can pick them on the kiosk. They go off duty automatically after {{ '%g' % (config.PERMANENT_SESSION_LIFETIME.total_seconds() / 3600) }} hours unless they log in on a device. Which shop are they working at?"
                             data-confirm-fields="#log-in-location-fields" data-confirm-label="Log In">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="location_id" value="{{ barber.default_location_id if barber.default_location_id in default_ids else active_locations[0].id }}">

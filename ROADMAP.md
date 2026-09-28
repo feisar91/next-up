@@ -29,9 +29,6 @@ Move a customer up or down, and hand a customer to a different barber. (Undoing 
 ### Service type (medium)
 Customers pick a service on the kiosk (haircut, beard trim, kids' cut, skin fade). This makes wait estimates more accurate and makes metrics more useful ("beard trims average 15 minutes").
 
-### Take admin-logged-in barbers off duty automatically (small)
-A barber an admin puts on duty with Log In has no device session, so nothing ever takes them off the kiosk. Take them off duty after `SESSION_LIFETIME_HOURS` of no activity, the same as device logins.
-
 ## For the owner
 
 ### Weekly email summary (medium)
