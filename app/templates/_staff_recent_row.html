@@ -1,0 +1,12 @@
+<div class="staff-row" data-key="{{ entry.id }}">
+  <div>
+    <strong>{{ entry.customer_name }}</strong>
+    <div class="meta">{% if entry.status == "done" %}Completed with {{ entry.called_by or "" }}{% else %}Removed from the queue{% endif %}</div>
+  </div>
+  <div class="staff-actions">
+    <form method="post" action="{{ url_for('staff.undo_finish', location_slug=location.slug, entry_id=entry.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-secondary">Undo</button>
+    </form>
+  </div>
+</div>

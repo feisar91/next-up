@@ -23,8 +23,8 @@ Outside opening hours, the kiosk shows "Closed, back at 9am" instead of acceptin
 
 ## For barbers
 
-### Undo and reorder in the queue (medium)
-Undo an accidental Complete or Remove, move a customer up or down, and hand a customer to a different barber.
+### Reorder the queue (medium)
+Move a customer up or down, and hand a customer to a different barber. (Undoing an accidental Complete or Remove is built: see Recently Finished on the staff dashboard.)
 
 ### Service type (medium)
 Customers pick a service on the kiosk (haircut, beard trim, kids' cut, skin fade). This makes wait estimates more accurate and makes metrics more useful ("beard trims average 15 minutes").

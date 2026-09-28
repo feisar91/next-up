@@ -13,6 +13,13 @@ def utcnow():
     return datetime.now(timezone.utc)
 
 
+def as_utc(value):
+    """SQLite (tests) hands timestamps back without tzinfo; they're stored as UTC."""
+    if value is not None and value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
 def generate_token():
     return secrets.token_urlsafe(24)
 
@@ -129,11 +136,23 @@ class QueueEntry(db.Model):
     checked_in_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
     called_at = db.Column(db.DateTime(timezone=True), nullable=True)
     completed_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    # When a barber removed them (no-show). Only used to limit how long Undo is
+    # offered; metrics count cancellations by status.
+    removed_at = db.Column(db.DateTime(timezone=True), nullable=True)
     called_by_barber_id = db.Column(db.Integer, db.ForeignKey("barbers.id"), nullable=True)
 
     location = db.relationship("Location", back_populates="queue_entries")
     preferred_barber = db.relationship("Barber", foreign_keys=[preferred_barber_id])
     called_by = db.relationship("Barber", foreign_keys=[called_by_barber_id])
+
+    @property
+    def finished_at(self):
+        """When it was completed or removed, or None if it's still in the queue."""
+        if self.status == self.STATUS_DONE:
+            return as_utc(self.completed_at)
+        if self.status == self.STATUS_CANCELLED:
+            return as_utc(self.removed_at)
+        return None
 
     def to_dict(self, short_name=False):
         return {

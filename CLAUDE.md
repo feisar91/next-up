@@ -13,7 +13,7 @@ Each shop runs four kinds of screen, all kept in sync live over Socket.IO:
 | Staff | `/staff/<slug>` | Barbers (phone or tablet): call next customer, mark done, remove no-shows | Flask-Login |
 | Admin | `/admin/`, `/admin/metrics` | Shop owner: manage locations, barber logins, device links, timezone, view charts | Flask-Login + `is_admin` |
 
-Customer flow: kiosk check-in creates a `QueueEntry` (`waiting`), a barber calls them (`in_progress`), then completes (`done`) or removes them as a no-show (`cancelled`).
+Customer flow: kiosk check-in creates a `QueueEntry` (`waiting`), a barber calls them (`in_progress`), then completes (`done`) or removes them as a no-show (`cancelled`). For `UNDO_WINDOW` (10 min) after Complete/Remove, the staff dashboard's Recently Finished list can undo it (`done` back to `in_progress`, `cancelled` back to `waiting`); `removed_at` exists only to time that window. The list comes from `staff_queue_state()` and is never sent to the display.
 
 ## Stack
 

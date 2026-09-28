@@ -4,6 +4,12 @@
   const waitingList = document.getElementById("waiting-list");
   const chairEmpty = document.getElementById("chair-empty");
   const waitingEmpty = document.getElementById("waiting-empty");
+  const recentCard = document.getElementById("recent-card");
+  const recentList = document.getElementById("recent-list");
+  // Recently finished entries, each with expiresAt (this device's clock) for when
+  // Undo stops being offered. The server sends seconds remaining rather than a
+  // time, so a tablet with a wrong clock still hides rows on time.
+  let recent = [];
 
   socket.on("connect", function () {
     socket.emit("join", { location: window.LOCATION_SLUG }, function (ack) {
@@ -15,7 +21,11 @@
     if (state.location !== window.LOCATION_SLUG) return;
     renderChair(state.in_progress);
     renderWaiting(state.waiting);
+    setRecent(state.recent || []);
   });
+
+  setRecent(window.INITIAL_RECENT || []);
+  setInterval(renderRecent, 5000);
 
   function actionForm(action, label, className, confirmText) {
     const form = document.createElement("form");
@@ -118,6 +128,57 @@
       },
       updateWaitingRow
     );
+  }
+
+  function setRecent(entries) {
+    const now = Date.now();
+    recent = entries.map(function (entry) {
+      return Object.assign({}, entry, { expiresAt: now + entry.undo_seconds * 1000 });
+    });
+    renderRecent();
+  }
+
+  function renderRecent() {
+    const now = Date.now();
+    const entries = recent.filter(function (entry) {
+      return entry.expiresAt > now;
+    });
+    recentCard.hidden = entries.length === 0;
+
+    AnimatedList.render(
+      recentList,
+      entries,
+      function (entry) {
+        return entry.id;
+      },
+      function (entry) {
+        const row = document.createElement("div");
+        row.className = "staff-row";
+
+        const info = document.createElement("div");
+        const strong = document.createElement("strong");
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        info.appendChild(strong);
+        info.appendChild(meta);
+
+        const actions = document.createElement("div");
+        actions.className = "staff-actions";
+        actions.appendChild(actionForm(window.URLS.undo + entry.id, "Undo", "btn btn-secondary"));
+
+        row.appendChild(info);
+        row.appendChild(actions);
+        updateRecentRow(row, entry);
+        return row;
+      },
+      updateRecentRow
+    );
+  }
+
+  function updateRecentRow(row, entry) {
+    row.querySelector("strong").textContent = entry.customer_name;
+    row.querySelector(".meta").textContent =
+      entry.status === "done" ? "Completed with " + (entry.called_by || "") : "Removed from the queue";
   }
 
   function updateWaitingRow(row, entry, index) {
