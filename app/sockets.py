@@ -136,6 +136,12 @@ def handle_join(data):
     if not (device_kind or current_user.is_authenticated):
         return
 
+    # After a restart the shop screens only reconnect here (no page load), so
+    # this also starts the off-duty check if no web request has yet.
+    from app.off_duty import start_off_duty_checks
+
+    start_off_duty_checks(current_app._get_current_object())
+
     if device_kind:
         _track_device(location, device_kind)
     join_room(location_room(slug))

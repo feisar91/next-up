@@ -247,7 +247,8 @@ def force_logout_barber(barber_id):
 def put_barber_on_duty(barber_id):
     """Mark a barber as working at a shop without them logging in on a device
     (e.g. they forgot their phone), so customers can pick them on the kiosk.
-    They stay on duty until logged out from here or they log in and out themselves."""
+    They stay on duty until logged out from here, they log in and out themselves,
+    or app/off_duty.py takes them off after the session lifetime with no device."""
     barber = db.get_or_404(Barber, barber_id)
     location = Location.query.filter_by(id=request.form.get("location_id"), active=True).first()
 
@@ -348,7 +349,7 @@ def delete_location(location_id):
 
     Barber.query.filter_by(default_location_id=location.id).update({"default_location_id": None})
     Barber.query.filter_by(on_duty_location_id=location.id).update(
-        {"on_duty_location_id": None, "on_break": False}
+        {"on_duty_location_id": None, "on_duty_since": None, "on_break": False}
     )
 
     name = location.name

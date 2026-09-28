@@ -27,6 +27,7 @@ def set_on_duty(barber, location):
         return
     previous_location = barber.on_duty_location
     barber.on_duty_location_id = location.id
+    barber.on_duty_since = datetime.now(timezone.utc)
     db.session.commit()
     if previous_location:
         broadcast_barbers(previous_location)
@@ -38,6 +39,7 @@ def clear_on_duty(barber):
     if not location:
         return
     barber.on_duty_location_id = None
+    barber.on_duty_since = None
     barber.on_break = False
     db.session.commit()
     broadcast_barbers(location)
