@@ -53,6 +53,14 @@
       {% for entry in state.waiting %}{% set position = loop.index %}{% include "_staff_waiting_row.html" %}{% endfor %}
     </div>
   </div>
+
+  <div class="card staff-section" id="recent-card" {% if not state.recent %}hidden{% endif %}>
+    <h2>Recently Finished</h2>
+    <p class="meta">Tapped Complete or Remove by mistake? Undo it here for {{ undo_minutes }} minutes.</p>
+    <div id="recent-list">
+      {% for entry in state.recent %}{% include "_staff_recent_row.html" %}{% endfor %}
+    </div>
+  </div>
 {% endblock %}
 {% block extra_js %}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
@@ -65,8 +73,10 @@
     window.URLS = {
       call: "{{ url_for('staff.call_customer', location_slug=location.slug, entry_id=0) }}".slice(0, -1),
       complete: "{{ url_for('staff.complete_customer', location_slug=location.slug, entry_id=0) }}".slice(0, -1),
-      remove: "{{ url_for('staff.remove_customer', location_slug=location.slug, entry_id=0) }}".slice(0, -1)
+      remove: "{{ url_for('staff.remove_customer', location_slug=location.slug, entry_id=0) }}".slice(0, -1),
+      undo: "{{ url_for('staff.undo_finish', location_slug=location.slug, entry_id=0) }}".slice(0, -1)
     };
+    window.INITIAL_RECENT = {{ state.recent | tojson }};
   </script>
   <script src="{{ url_for('static', filename='js/app-version.js') }}"></script>
   <script src="{{ url_for('static', filename='js/animated-list.js') }}"></script>

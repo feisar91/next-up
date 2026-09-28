@@ -5,7 +5,7 @@ from flask_login import current_user, login_required
 
 from app import db
 from app.models import MIN_PASSWORD_LENGTH, Location, QueueEntry
-from app.sockets import broadcast_barbers, broadcast_queue, queue_state
+from app.sockets import UNDO_WINDOW, broadcast_barbers, broadcast_queue, staff_queue_state
 
 staff_bp = Blueprint("staff", __name__)
 
@@ -134,8 +134,13 @@ def dashboard(location_slug):
     location = _get_location_or_404(location_slug)
     session[ACTIVE_LOCATION_SESSION_KEY] = location.id
     set_on_duty(current_user, location)
-    state = queue_state(location)
-    return render_template("staff_dashboard.html", location=location, state=state)
+    state = staff_queue_state(location)
+    return render_template(
+        "staff_dashboard.html",
+        location=location,
+        state=state,
+        undo_minutes=int(UNDO_WINDOW.total_seconds() // 60),
+    )
 
 
 @staff_bp.route("/staff/<location_slug>/break", methods=["POST"])
@@ -194,6 +199,37 @@ def remove_customer(location_slug, entry_id):
     ).first_or_404()
 
     entry.status = QueueEntry.STATUS_CANCELLED
+    entry.removed_at = datetime.now(timezone.utc)
+    db.session.commit()
+
+    broadcast_queue(location)
+    return redirect(url_for("staff.dashboard", location_slug=location.slug))
+
+
+@staff_bp.route("/staff/<location_slug>/undo/<int:entry_id>", methods=["POST"])
+@login_required
+def undo_finish(location_slug, entry_id):
+    """Undo an accidental Complete (back in the chair) or Remove (back in the
+    queue, in their original place since it's ordered by check-in time)."""
+    location = _get_location_or_404(location_slug)
+    entry = QueueEntry.query.filter(
+        QueueEntry.id == entry_id,
+        QueueEntry.location_id == location.id,
+        QueueEntry.status.in_([QueueEntry.STATUS_DONE, QueueEntry.STATUS_CANCELLED]),
+    ).first_or_404()
+
+    finished_at = entry.finished_at
+    if finished_at is None or datetime.now(timezone.utc) - finished_at > UNDO_WINDOW:
+        minutes = int(UNDO_WINDOW.total_seconds() // 60)
+        flash(f"Too late to undo: {entry.customer_name} finished more than {minutes} minutes ago.", "error")
+        return redirect(url_for("staff.dashboard", location_slug=location.slug))
+
+    if entry.status == QueueEntry.STATUS_DONE:
+        entry.status = QueueEntry.STATUS_IN_PROGRESS
+        entry.completed_at = None
+    else:
+        entry.status = QueueEntry.STATUS_WAITING
+        entry.removed_at = None
     db.session.commit()
 
     broadcast_queue(location)

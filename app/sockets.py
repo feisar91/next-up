@@ -11,6 +11,10 @@ from app import db, socketio
 from app.models import Barber, Location, QueueEntry, utcnow
 
 DEVICE_KINDS = ("kiosk", "display")
+# How long after Complete / Remove a barber can undo it, and how many recently
+# finished customers the staff dashboard lists.
+UNDO_WINDOW = timedelta(minutes=10)
+RECENT_LIMIT = 5
 # A screen that dropped off this recently still counts as online: kiosks briefly
 # disconnect on every check-in (the page reloads), and that shouldn't read as "Offline".
 RECONNECT_GRACE = timedelta(seconds=60)
@@ -56,8 +60,33 @@ def queue_state(location, short_names=False):
     }
 
 
+def recently_finished(location):
+    """Customers completed or removed within UNDO_WINDOW, newest first, for the
+    staff dashboard's Undo list. `undo_seconds` is relative rather than a
+    timestamp so a tablet with a wrong clock still hides the row on time."""
+    now = utcnow()
+    cutoff = now - UNDO_WINDOW
+    entries = QueueEntry.query.filter(
+        QueueEntry.location_id == location.id,
+        db.or_(
+            db.and_(QueueEntry.status == QueueEntry.STATUS_DONE, QueueEntry.completed_at >= cutoff),
+            db.and_(QueueEntry.status == QueueEntry.STATUS_CANCELLED, QueueEntry.removed_at >= cutoff),
+        ),
+    ).all()
+    entries.sort(key=lambda e: e.finished_at, reverse=True)
+    return [
+        {**e.to_dict(), "undo_seconds": int((e.finished_at + UNDO_WINDOW - now).total_seconds())}
+        for e in entries[:RECENT_LIMIT]
+    ]
+
+
+def staff_queue_state(location):
+    """The queue as staff see it: full names plus the recently finished list."""
+    return {**queue_state(location), "recent": recently_finished(location)}
+
+
 def broadcast_queue(location):
-    socketio.emit("queue_update", queue_state(location), to=staff_room(location.slug))
+    socketio.emit("queue_update", staff_queue_state(location), to=staff_room(location.slug))
     socketio.emit("queue_update", queue_state(location, short_names=True), to=display_room(location.slug))
 
 
