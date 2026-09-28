@@ -75,6 +75,10 @@ class Barber(UserMixin, db.Model):
     # When False the barber can still log in and work the queue, but never shows
     # up in the kiosk's preferred-barber list (e.g. an owner/admin login).
     show_on_kiosk = db.Column(db.Boolean, nullable=False, default=True)
+    # Set by the barber from their staff dashboard ("Go on break"): off the kiosk,
+    # still on duty. Separate from show_on_kiosk so a barber can't undo an admin's
+    # choice, and cleared when they go off duty so nobody logs in still on break.
+    on_break = db.Column(db.Boolean, nullable=False, default=False)
 
     default_location = db.relationship("Location", back_populates="barbers", foreign_keys=[default_location_id])
     on_duty_location = db.relationship("Location", foreign_keys=[on_duty_location_id])

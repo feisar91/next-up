@@ -64,7 +64,9 @@ def broadcast_queue(location):
 def kiosk_barbers(location):
     """Barbers a customer can pick as their preferred barber at this location."""
     return (
-        Barber.query.filter_by(on_duty_location_id=location.id, active=True, show_on_kiosk=True)
+        Barber.query.filter_by(
+            on_duty_location_id=location.id, active=True, show_on_kiosk=True, on_break=False
+        )
         .order_by(Barber.name)
         .all()
     )

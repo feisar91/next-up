@@ -6,6 +6,38 @@
 {% block content %}
   <h1>{{ location.name }}</h1>
 
+  <div class="card break-card{% if current_user.on_break %} is-on-break{% endif %}" id="break-card">
+    <div class="staff-row">
+      {% if not current_user.show_on_kiosk %}
+        <div class="meta">An admin has hidden you from the kiosk, so customers can't pick you as their barber.</div>
+      {% elif current_user.on_break %}
+        <div>
+          <strong>You're on break</strong>
+          <div class="meta">Customers can't pick you on the kiosk. You can still call customers.</div>
+        </div>
+        <div class="staff-actions">
+          <form method="post" action="{{ url_for('staff.set_break', location_slug=location.slug) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="on_break" value="0">
+            <button type="submit" class="btn">Back from Break</button>
+          </form>
+        </div>
+      {% else %}
+        <div>
+          <strong>You're on the kiosk</strong>
+          <div class="meta">Customers can pick you as their barber.</div>
+        </div>
+        <div class="staff-actions">
+          <form method="post" action="{{ url_for('staff.set_break', location_slug=location.slug) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="on_break" value="1">
+            <button type="submit" class="btn btn-secondary">Go On Break</button>
+          </form>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
   <div class="card staff-section">
     <h2>In the Chair</h2>
     <p class="meta" id="chair-empty" {% if state.in_progress %}hidden{% endif %}>No one in the chair right now.</p>

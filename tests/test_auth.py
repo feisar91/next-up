@@ -269,3 +269,47 @@ def test_barber_can_change_their_display_name(app, client, barber):
     assert b"Display name updated." in resp.data
     with app.app_context():
         assert db.session.get(Barber, barber["id"]).name == "Alexander"
+
+
+def test_nav_has_a_queue_link_marked_current_on_the_dashboard(client, locations, barber):
+    login(client, barber["username"], barber["password"])
+
+    dashboard = client.get("/staff/mainstreet").data.decode()
+    assert '<a href="/staff" aria-current="page">Queue</a>' in dashboard
+
+    profile = client.get("/staff/profile").data.decode()
+    assert '<a href="/staff">Queue</a>' in profile
+    assert 'aria-current="page">Profile</a>' in profile
+
+
+def test_queue_link_returns_to_the_current_location(client, locations, barber):
+    login(client, barber["username"], barber["password"])
+    client.get("/staff/riverside")
+    client.get("/staff/profile")
+
+    resp = client.get("/staff")
+    assert resp.status_code == 302
+    assert resp.headers["Location"].endswith("/staff/riverside")
+
+
+def test_home_page_shows_log_in_when_logged_out(client, locations):
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert b"Staff Log In" in resp.data
+
+
+def test_home_page_sends_a_logged_in_barber_to_their_queue(client, locations, barber):
+    login(client, barber["username"], barber["password"])
+    client.get("/staff/mainstreet")
+
+    resp = client.get("/")
+    assert resp.status_code == 302
+    assert resp.headers["Location"].endswith("/staff")
+    assert client.get("/", follow_redirects=True).request.path == "/staff/mainstreet"
+
+
+def test_home_page_shows_log_in_after_logging_out(client, locations, barber):
+    login(client, barber["username"], barber["password"])
+    client.post("/logout")
+
+    assert b"Staff Log In" in client.get("/").data

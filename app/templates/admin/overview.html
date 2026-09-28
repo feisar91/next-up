@@ -180,7 +180,7 @@
                   {% set login_info = logged_in.get(barber.id) %}
                   {% if login_info or barber.on_duty_location %}
                     {% if barber.on_duty_location %}
-                      On duty at {{ barber.on_duty_location.name }}
+                      On duty at {{ barber.on_duty_location.name }}{% if barber.on_break %}, on break{% endif %}
                     {% else %}
                       Yes
                     {% endif %}

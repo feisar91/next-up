@@ -23,9 +23,6 @@ Outside opening hours, the kiosk shows "Closed, back at 9am" instead of acceptin
 
 ## For barbers
 
-### "On break" button (small)
-Let barbers take themselves off the kiosk from the staff dashboard without logging out. Today only an admin can do this, with the On Kiosk switch. Reuses the `show_on_kiosk` logic.
-
 ### Undo and reorder in the queue (medium)
 Undo an accidental Complete or Remove, move a customer up or down, and hand a customer to a different barber.
 

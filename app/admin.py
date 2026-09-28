@@ -347,7 +347,9 @@ def delete_location(location_id):
         return redirect(url_for("admin.overview", _anchor="locations"))
 
     Barber.query.filter_by(default_location_id=location.id).update({"default_location_id": None})
-    Barber.query.filter_by(on_duty_location_id=location.id).update({"on_duty_location_id": None})
+    Barber.query.filter_by(on_duty_location_id=location.id).update(
+        {"on_duty_location_id": None, "on_break": False}
+    )
 
     name = location.name
     db.session.delete(location)
