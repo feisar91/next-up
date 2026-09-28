@@ -244,6 +244,10 @@ label {
   white-space: nowrap;
 }
 
+.nav-links a[aria-current="page"] {
+  box-shadow: inset 0 -2px 0 var(--bog-red);
+}
+
 /* Log out is a POST (CSRF-protected), so it's a button styled as a nav link. */
 .nav-form {
   display: inline;
@@ -270,6 +274,12 @@ label {
 
   .nav-user {
     width: 100%;
+  }
+
+  /* Taller tap targets on phones without changing how the links look. */
+  .nav-links a,
+  .nav-button {
+    padding: 0.4rem 0;
   }
 }
 
@@ -306,6 +316,15 @@ label {
 .staff-row .queue-number {
   font-family: var(--font-display);
   color: var(--bog-red);
+}
+
+.break-card {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.break-card.is-on-break {
+  border-left: 6px solid var(--bog-red);
 }
 
 .staff-actions {

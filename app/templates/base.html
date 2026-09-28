@@ -21,12 +21,14 @@
       </a>
       {% if current_user.is_authenticated %}
         <nav class="nav-links">
+          {% set section = request.blueprint %}
           <span class="nav-user">{{ current_user.name }}</span>
-          <a href="{{ url_for('staff.choose_location') }}">Change Location</a>
-          <a href="{{ url_for('staff.profile') }}">Profile</a>
+          <a href="{{ url_for('staff.landing') }}"{% if request.endpoint == 'staff.dashboard' %} aria-current="page"{% endif %}>Queue</a>
+          <a href="{{ url_for('staff.choose_location') }}"{% if request.endpoint == 'staff.choose_location' %} aria-current="page"{% endif %}>Change Location</a>
+          <a href="{{ url_for('staff.profile') }}"{% if request.endpoint == 'staff.profile' %} aria-current="page"{% endif %}>Profile</a>
           {% if current_user.is_admin %}
-            <a href="{{ url_for('admin.overview') }}">Admin</a>
-            <a href="{{ url_for('metrics.metrics') }}">Metrics</a>
+            <a href="{{ url_for('admin.overview') }}"{% if section == 'admin' %} aria-current="page"{% endif %}>Admin</a>
+            <a href="{{ url_for('metrics.metrics') }}"{% if section == 'metrics' %} aria-current="page"{% endif %}>Metrics</a>
           {% endif %}
           <form method="post" action="{{ url_for('auth.logout') }}" class="nav-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

@@ -123,6 +123,9 @@ def create_app(config_class=Config):
     def index():
         from flask import render_template
 
+        # Same as /login: someone already logged in goes straight to their queue.
+        if current_user.is_authenticated:
+            return redirect(url_for("staff.landing"))
         return render_template("index.html")
 
     return app

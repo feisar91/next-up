@@ -38,6 +38,7 @@ def clear_on_duty(barber):
     if not location:
         return
     barber.on_duty_location_id = None
+    barber.on_break = False
     db.session.commit()
     broadcast_barbers(location)
 
@@ -135,6 +136,20 @@ def dashboard(location_slug):
     set_on_duty(current_user, location)
     state = queue_state(location)
     return render_template("staff_dashboard.html", location=location, state=state)
+
+
+@staff_bp.route("/staff/<location_slug>/break", methods=["POST"])
+@login_required
+def set_break(location_slug):
+    """Take yourself off (or back onto) the kiosk without logging out. The form
+    sends the state it wants rather than toggling, so a stale page on a second
+    device can't flip it the wrong way."""
+    location = _get_location_or_404(location_slug)
+    set_on_duty(current_user, location)
+    current_user.on_break = request.form.get("on_break") == "1"
+    db.session.commit()
+    broadcast_barbers(location)
+    return redirect(url_for("staff.dashboard", location_slug=location.slug))
 
 
 @staff_bp.route("/staff/<location_slug>/call/<int:entry_id>", methods=["POST"])
