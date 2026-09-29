@@ -39,14 +39,26 @@
               window.location.href = "{{ url_for('kiosk.check_in', location_slug=location.slug, token=token) }}";
             }, 6000);
           </script>
+        {% elif location.closed %}
+          <div class="kiosk-closed">
+            <p class="kiosk-kicker">{{ location.name }}</p>
+            <h1>We're closed right now</h1>
+            {% if reopens %}
+              <p class="confirm-note">Check-ins aren't open at the moment. {{ reopens }}.</p>
+            {% else %}
+              <p class="confirm-note">Check-ins aren't open at the moment. Please check back later.</p>
+            {% endif %}
+          </div>
         {% else %}
-          <form class="kiosk-form" method="post">
+          <form class="kiosk-form" method="post" autocomplete="off">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <p class="kiosk-kicker">Walk-In Check-In</p>
             <h1>Welcome to {{ location.name }}</h1>
             <div class="field">
               <label for="customer_name">Your name</label>
-              <input type="text" id="customer_name" name="customer_name" required autofocus placeholder="Enter your name">
+              {# Shared tablet: don't offer earlier customers' names, or "correct" unusual ones. #}
+              <input type="text" id="customer_name" name="customer_name" required autofocus placeholder="Enter your name"
+                     autocomplete="off" autocorrect="off" spellcheck="false">
             </div>
             <div class="field">
               <label>Preferred barber (optional)</label>
@@ -70,6 +82,7 @@
     window.LOCATION_SLUG = "{{ location.slug }}";
     window.KIOSK_TOKEN = "{{ token }}";
     window.APP_VERSION = "{{ app_version }}";
+    window.STORE_CLOSED = {{ location.closed | tojson }};
   </script>
   <script src="{{ url_for('static', filename='js/app-version.js') }}"></script>
   <script src="{{ url_for('static', filename='js/interactions.js') }}"></script>

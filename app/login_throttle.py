@@ -18,7 +18,7 @@ def _window():
     return timedelta(minutes=current_app.config["LOGIN_LOCKOUT_MINUTES"])
 
 
-def _client_ip():
+def client_ip():
     return (request.remote_addr or "unknown")[:45]
 
 
@@ -36,7 +36,7 @@ def lockout_minutes(username):
     """None if this login may be attempted, else minutes until it can be."""
     cutoff = utcnow() - _window()
     username = username.lower()
-    ip = _client_ip()
+    ip = client_ip()
     recent = (
         LoginAttempt.query.filter(
             LoginAttempt.attempted_at >= cutoff,
@@ -60,7 +60,7 @@ def lockout_minutes(username):
 
 def record_failure(username):
     LoginAttempt.query.filter(LoginAttempt.attempted_at < utcnow() - _window()).delete()
-    db.session.add(LoginAttempt(username=username.lower()[:80], ip_address=_client_ip()))
+    db.session.add(LoginAttempt(username=username.lower()[:80], ip_address=client_ip()))
     db.session.commit()
 
 

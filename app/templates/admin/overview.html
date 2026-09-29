@@ -40,6 +40,7 @@
               <th>Slug</th>
               <th>Address</th>
               <th>Status</th>
+              <th>Hours</th>
               <th></th>
             </tr>
           </thead>
@@ -50,8 +51,10 @@
                 <td>{{ location.slug }}</td>
                 <td>{{ location.address or "-" }}</td>
                 <td>{{ "Active" if location.active else "Inactive" }}</td>
+                <td>{{ "Automatic" if location.auto_hours else "Manual" }}</td>
                 <td>
                   <div class="row-actions">
+                    <a href="{{ url_for('admin.location_hours', location_id=location.id) }}" class="btn btn-secondary">Opening Hours</a>
                     <form method="post" action="{{ url_for('admin.toggle_location_active', location_id=location.id) }}" {% if location.active %}data-confirm="Remove {{ location.name }}? Its kiosk and TV display links will stop working immediately, and it will disappear from the staff location picker."{% endif %}>
                       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                       <button type="submit" class="btn btn-danger">{{ "Remove" if location.active else "Restore" }}</button>
@@ -66,7 +69,7 @@
                 </td>
               </tr>
             {% else %}
-              <tr><td colspan="5" class="meta">No locations yet.</td></tr>
+              <tr><td colspan="6" class="meta">No locations yet.</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -322,14 +325,61 @@
   <div class="tab-panel" data-tab-panel="activity">
     <div class="card">
       <h2>Activity</h2>
-      <p class="meta">Changes made from this admin area or the command line, newest first. Shows the latest {{ activity_limit }}.</p>
+      <p class="meta">Every action the app can produce - newest first. <br>Shows the latest {{ activity_limit }} matching entries.</p>
+
+      <form method="get" action="{{ url_for('admin.overview') }}#activity" class="activity-filters">
+        <div class="field">
+          <label for="activity_category">Type</label>
+          <select id="activity_category" name="activity_category">
+            <option value="">All types</option>
+            {% for value, label in activity_categories %}
+              <option value="{{ value }}" {% if activity_filters.category == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="activity_action">Event</label>
+          <select id="activity_action" name="activity_action">
+            <option value="">All events</option>
+            {% for code, label in activity_actions %}
+              <option value="{{ code }}" {% if activity_filters.action == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="activity_who">Who</label>
+          <select id="activity_who" name="activity_who">
+            <option value="">Everyone</option>
+            {% for name in activity_actors %}
+              <option value="{{ name }}" {% if activity_filters.who == name %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field field-date">
+          <label for="activity_from">From</label>
+          <input type="date" id="activity_from" name="activity_from" value="{{ activity_filters.from_date or '' }}">
+        </div>
+        <div class="field field-date">
+          <label for="activity_to">To</label>
+          <input type="date" id="activity_to" name="activity_to" value="{{ activity_filters.to_date or '' }}">
+        </div>
+        <div class="activity-filters-actions">
+          <button type="submit" class="btn btn-secondary">Filter</button>
+          <a href="{{ url_for('admin.overview') }}#activity" class="btn btn-secondary">Clear</a>
+          {# Reloads with the filters already applied, not unsubmitted changes to the form (admin-tabs.js). #}
+          <a href="{{ request.full_path.rstrip('?') }}#activity" class="btn btn-secondary" title="Show the latest activity" data-reload>Refresh</a>
+        </div>
+      </form>
+
       <div style="overflow-x:auto;">
         <table class="admin-table">
           <thead>
             <tr>
               <th>When</th>
               <th>Who</th>
-              <th>What</th>
+              <th>Type</th>
+              <th>Event</th>
+              <th>Details</th>
             </tr>
           </thead>
           <tbody>
@@ -337,10 +387,12 @@
               <tr>
                 <td class="nowrap">{{ entry.created_at | local_time }}</td>
                 <td class="nowrap">{{ entry.actor_name }}</td>
+                <td class="nowrap">{{ activity_category_labels.get(entry.category, entry.category) }}</td>
+                <td class="nowrap">{{ activity_action_label(entry.action) }}</td>
                 <td>{{ entry.summary }}</td>
               </tr>
             {% else %}
-              <tr><td colspan="3" class="meta">Nothing yet.</td></tr>
+              <tr><td colspan="5" class="meta">Nothing matches these filters.</td></tr>
             {% endfor %}
           </tbody>
         </table>

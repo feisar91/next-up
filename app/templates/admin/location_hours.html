@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Opening Hours - {{ location.name }}{% endblock %}
+{% block content %}
+  <h1>Opening Hours: {{ location.name }}</h1>
+
+  <div class="card" style="max-width:640px;">
+    <h2>Weekly Hours</h2>
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field">
+        <label><input type="checkbox" name="auto_hours" style="width:auto;display:inline-block;" {% if auto_hours %}checked{% endif %}> Open and close automatically</label>
+        <p class="meta" style="color:var(--bog-grey);">
+          The kiosk opens to check-ins at opening time and closes at closing time, less the cutoff below. Barbers can still open or close by hand; that holds until the next scheduled change, or midnight at the latest.
+        </p>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Day</th>
+              <th class="cell-center">Open</th>
+              <th>Opens</th>
+              <th>Closes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td><label for="open_{{ row.weekday }}" style="margin:0;">{{ row.name }}</label></td>
+                <td class="cell-center"><input type="checkbox" id="open_{{ row.weekday }}" name="open_{{ row.weekday }}" style="width:auto;" {% if row.open %}checked{% endif %}></td>
+                <td><input type="time" name="opens_{{ row.weekday }}" value="{{ row.opens }}" aria-label="{{ row.name }} opens"></td>
+                <td><input type="time" name="closes_{{ row.weekday }}" value="{{ row.closes }}" aria-label="{{ row.name }} closes"></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="field" style="margin-top:1.25rem;">
+        <label for="checkin_cutoff_minutes">Stop check-ins this many minutes before closing</label>
+        <input type="number" id="checkin_cutoff_minutes" name="checkin_cutoff_minutes" min="0" max="{{ max_cutoff }}" step="5" value="{{ cutoff }}">
+      </div>
+
+      <div style="display:flex;gap:0.75rem;">
+        <button type="submit" class="btn">Save Hours</button>
+        <a href="{{ url_for('admin.overview', _anchor='locations') }}" class="btn btn-secondary">Back</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="card" style="max-width:640px;" id="special-hours">
+    <h2>Holidays and Special Hours</h2>
+    <p class="meta" style="color:var(--bog-grey);">Dates that don't follow the weekly hours, e.g. public holidays or a short Christmas Eve.</p>
+
+    {% if special_hours %}
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Hours</th>
+              <th>Note</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for special in special_hours %}
+              <tr>
+                <td class="nowrap">{{ date_text(special.date) }}</td>
+                <td class="nowrap">{{ hours_text(None if special.closed_all_day else (special.opens_at, special.closes_at)) | capitalize }}</td>
+                <td>{{ special.note or "-" }}</td>
+                <td>
+                  <form method="post" action="{{ url_for('admin.delete_special_hours', location_id=location.id, special_id=special.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-secondary">Remove</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="meta">No upcoming dates.</p>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('admin.add_special_hours', location_id=location.id) }}" style="margin-top:1.5rem;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field">
+        <label for="special_date">Date</label>
+        <input type="date" id="special_date" name="date" min="{{ today }}" required>
+      </div>
+      <div class="field">
+        <label><input type="checkbox" name="closed_all_day" style="width:auto;display:inline-block;" checked> Closed all day</label>
+      </div>
+      <div class="field">
+        <label for="special_opens">Or open from</label>
+        <input type="time" id="special_opens" name="opens" value="09:00">
+      </div>
+      <div class="field">
+        <label for="special_closes">Until</label>
+        <input type="time" id="special_closes" name="closes" value="14:00">
+      </div>
+      <div class="field">
+        <label for="special_note">Note (optional)</label>
+        <input type="text" id="special_note" name="note" maxlength="120" placeholder="e.g. Christmas Day">
+      </div>
+      <button type="submit" class="btn">Add Date</button>
+    </form>
+    <p class="meta" style="color:var(--bog-grey);">Adding a date that's already listed replaces it. To use the times, untick "Closed all day".</p>
+  </div>
+{% endblock %}

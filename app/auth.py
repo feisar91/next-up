@@ -1,10 +1,10 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from app import db
+from app import audit, db
 from app.models import MIN_PASSWORD_LENGTH, Barber
 from app.login_sessions import end_all_sessions, end_current_session, start_session
-from app.login_throttle import clear_failures, lockout_minutes, record_failure
+from app.login_throttle import clear_failures, client_ip, lockout_minutes, record_failure
 from app.staff import clear_on_duty
 
 auth_bp = Blueprint("auth", __name__)
@@ -35,9 +35,30 @@ def login():
             # re-picks a location - the location picker uses their default (if any)
             # to make this a one-click confirmation, not a chore.
             start_session(barber)
+            audit.record("session.login", f"{barber.name} logged in", actor=barber, category=audit.CATEGORY_BARBER)
             return redirect(url_for("staff.landing"))
 
         record_failure(username)
+        # The typed username is shown in quotes because it's unverified input,
+        # and may not be an account at all.
+        attempted = f"'{username[:80]}' from {client_ip()}"
+        audit.record(
+            "session.login_failed",
+            f"Failed login for {attempted}",
+            category=audit.CATEGORY_SECURITY,
+            actor_name=audit.UNKNOWN_ACTOR,
+        )
+        # Logged once, as the lockout starts: attempts refused while locked out
+        # aren't logged, so a brute-force run can't flood the activity log.
+        wait = lockout_minutes(username)
+        if wait is not None:
+            audit.record(
+                "session.lockout",
+                f"Locked out logins for {attempted} for {wait} minute{'s' if wait != 1 else ''} "
+                "after too many failed attempts",
+                category=audit.CATEGORY_SECURITY,
+                actor_name=audit.UNKNOWN_ACTOR,
+            )
         flash("Incorrect username or password.", "error")
 
     return render_template("login.html")
@@ -59,6 +80,11 @@ def change_password():
             current_user.must_change_password = False
             db.session.commit()
             end_all_sessions(current_user, keep_current=True)
+            audit.record(
+                "barber.change_own_password",
+                f"{current_user.name} set a new password after being asked to change it",
+                category=audit.CATEGORY_BARBER,
+            )
             flash("Password updated.", "success")
             return redirect(url_for("staff.landing"))
 
@@ -68,6 +94,11 @@ def change_password():
 @auth_bp.route("/logout", methods=["POST"])
 @login_required
 def logout():
+    location = current_user.on_duty_location
+    summary = f"{current_user.name} logged out"
+    if location:
+        summary += f" and went off duty at {location.name}"
+    audit.record("session.logout", summary, category=audit.CATEGORY_BARBER)
     clear_on_duty(current_user)
     end_current_session()
     return redirect(url_for("auth.login"))

@@ -5,7 +5,7 @@ Digital replacement for the paper sign-in pad across Barber on George's location
 - **Kiosk** (`/kiosk/<location>/<token>`) - tablet check-in screen. Customer enters their name and optionally a preferred barber.
 - **Display** (`/display/<location>/<token>`) - read-only TV screen showing who's in the chair and who's waiting, live. Because the whole shop can read it, customers appear as first name and last initial ("Jordan S."); the staff dashboard shows full names.
 - **Staff** (`/staff/<location>`) - barber login to call the next customer to the chair, mark them complete, or remove a no-show. A Complete or Remove tapped by mistake can be undone from "Recently Finished" for 10 minutes. "Go On Break" takes the barber off the kiosk's preferred-barber list without logging out (they can still call customers), and logging out ends the break. Works on a barber's phone or on the tablet.
-- **Admin** (`/admin`) - admin-only screen to add locations, add/edit barber logins, and get each location's Kiosk/Display links.
+- **Admin** (`/admin`) - admin-only screen to add locations, set their opening hours, add/edit barber logins, and get each location's Kiosk/Display links.
 - **Metrics** (`/admin/metrics`) - admin-only charts for a chosen period (7/14/30/90 days): cuts per day, by barber and by location, a busiest-times heatmap (per store and combined), average time in chair per barber, preferred-barber demand, plus wait/service time stats. Days and hours use the timezone set under Admin > Settings (default `Australia/Hobart`). For the chosen period you can **Download Visits (CSV)** (one row per check-in: location, customer, preferred barber, who served them, status, times, wait and time in chair) or **Print / Save as PDF** (a print layout of the page, including every location's heatmap).
 
 Live updates across all screens are pushed over Socket.IO - no polling, no manual refresh.
@@ -18,11 +18,17 @@ The Device Links tab shows whether each shop's kiosk and TV are connected right 
 
 After a deploy, open kiosk, TV and staff dashboard screens reload themselves when their live connection comes back, so nobody has to refresh the shop devices by hand. A kiosk waits until nobody is partway through typing a name.
 
+### Opening hours
+
+A store can be closed to new check-ins by hand ("Close Store" on the staff dashboard), or automatically on a schedule. Under Admin > Locations > **Opening Hours**, set each weekday's hours, how many minutes before closing to stop check-ins, and dates that differ (public holidays, a short Christmas Eve), then tick "Open and close automatically". The store then opens and closes on time (checked every 30 seconds, `OPENING_HOURS_CHECK_SECONDS`), each change is noted on the Activity tab, and a closed kiosk says when it's back ("Back Tuesday at 9:00 am"). Closing only stops new check-ins; customers already waiting stay in the queue.
+
+Barbers can still open or close by hand. If that goes against the schedule (closing early, opening late for a walk-in), it holds until the next scheduled opening or closing, or midnight at the latest, so a store opened late isn't left taking check-ins overnight. Saving the opening hours hands control straight back to the schedule.
+
 ### Security
 
 - Every form is CSRF-protected (Flask-WTF), and logging out is a POST.
 - Staff logins are rate limited: after 5 failed attempts for a username, or 20 from one IP address, within 15 minutes, further attempts are refused until the window passes. All three numbers can be changed in `.env` (see `.env.example`).
-- The admin **Activity** tab lists every change made from the admin area or with `flask reset-admin-password`: who did it, when, and what changed (the latest 100 entries).
+- The admin **Activity** tab lists every action the app can produce - admin changes, barber actions (log in/out, choosing or switching shop, call/complete/remove/undo, break, open/close, changing their own profile or password), customer check-ins, security events (failed logins and lockouts, with the username tried and the IP address), and automatic/command-line changes: who did it, when, and what (the latest 200 matching entries). Filterable by type (admin/barber/customer/automatic/command line/security), event, who, and date range.
 - If the app sits behind a reverse proxy, set `BEHIND_PROXY=true` so the rate limit sees visitors' real IP addresses instead of the proxy's.
 
 ## Stack
@@ -87,11 +93,11 @@ Point each shop's tablet browser at its Kiosk link and each TV's browser (or a c
 
 ## Data model
 
-- **Location** - one of the 3 (soon more) shops; has a URL slug plus a `kiosk_token` and `display_token` (regenerable from `/admin/`).
+- **Location** - one of the 3 (soon more) shops; has a URL slug plus a `kiosk_token` and `display_token` (regenerable from `/admin/`). `closed` stops new check-ins; `auto_hours` sets it from the location's **OpeningHours** (one row per open weekday) and **SpecialHours** (one row per date that differs, with no times meaning closed all day), and `manual_until` is how long a barber's manual Open/Close holds against that schedule.
 - **Barber** - an individual staff login. Any active barber can work any location (chosen at login); `default_location_id` just pre-selects one on the picker. `is_admin` grants access to `/admin` and `/admin/metrics`. The "On Kiosk" switch in the admin barber table (`show_on_kiosk`) keeps them off the kiosk's preferred-barber list, e.g. an admin hiding themselves for a while. Barbers can't change it themselves; their dashboard's break button is separate (`on_break`), and the admin barber table shows "on break" next to their location. Everyone can change their own display name from their Profile page.
 - **QueueEntry** - one customer's place in a location's queue: `waiting → in_progress → done`, or `cancelled` if removed as a no-show.
 - **LoginSession** - one logged-in device for a barber. Logins expire after 12 hours without activity (`SESSION_LIFETIME_HOURS`). The admin barber table shows who is logged in and on duty where. Its Log Out button ends a barber's sessions and takes them off duty. For a barber who isn't logged in, Log In puts them on duty at a chosen shop without a device (e.g. a forgotten phone), so they show on that kiosk until logged out, or until 12 hours (`SESSION_LIFETIME_HOURS`) have passed with no device login, when the app takes them off duty automatically and notes it on the Activity tab. The same applies to a barber whose phone login expired without them logging out. Logging out, a password reset, or deactivation also ends sessions.
-- **AdminAction** - one entry in the admin activity log. Stores the admin's name and a plain-English summary, so entries still read correctly after someone is renamed or deleted.
+- **AdminAction** - one entry in the activity log (originally admin-only, now every action - see `app/audit.py`). Stores the actor's name, a category (admin/barber/customer/automatic/cli/security) and a plain-English summary, so entries still read correctly after someone is renamed or deleted.
 - **Setting** - shop-wide key/value settings edited from `/admin/` (currently just `timezone`).
 
 Ideas for future work are listed in [ROADMAP.md](ROADMAP.md).

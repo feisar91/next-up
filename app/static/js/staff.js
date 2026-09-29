@@ -24,6 +24,14 @@
     setRecent(state.recent || []);
   });
 
+  // The store can open or close on its opening hours with nobody tapping the
+  // button, so reload to show the new state (a page load re-renders the card).
+  socket.on("store_status", function (state) {
+    if (state.location !== window.LOCATION_SLUG) return;
+    if (state.closed === window.STORE_CLOSED) return;
+    window.location.reload();
+  });
+
   setRecent(window.INITIAL_RECENT || []);
   setInterval(renderRecent, 5000);
 

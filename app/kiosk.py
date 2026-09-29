@@ -2,8 +2,9 @@ import secrets
 
 from flask import Blueprint, abort, render_template, request
 
-from app import db
+from app import audit, db
 from app.models import Location, QueueEntry
+from app.opening_hours import reopens_text
 from app.sockets import broadcast_queue, kiosk_barbers, queue_state
 
 kiosk_bp = Blueprint("kiosk", __name__)
@@ -23,7 +24,7 @@ def check_in(location_slug, token):
 
     confirmation = None
 
-    if request.method == "POST":
+    if request.method == "POST" and not location.closed:
         customer_name = request.form.get("customer_name", "").strip()
         # Only accept a barber the kiosk actually offered; anything else (hidden,
         # off duty, or a tampered form) falls back to "no preference".
@@ -41,6 +42,8 @@ def check_in(location_slug, token):
             db.session.commit()
 
             broadcast_queue(location)
+            detail = f" (prefers {preferred_barber.name})" if preferred_barber else ""
+            audit.record("queue.checkin", f"{customer_name} checked in at {location.name}{detail}")
 
             position = len(queue_state(location)["waiting"])
             confirmation = {"name": customer_name, "position": position}
@@ -51,4 +54,5 @@ def check_in(location_slug, token):
         token=token,
         barbers=barbers,
         confirmation=confirmation,
+        reopens=reopens_text(location),
     )

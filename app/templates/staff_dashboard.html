@@ -6,6 +6,62 @@
 {% block content %}
   <h1>{{ location.name }}</h1>
 
+  <div class="card staff-section">
+    <h2>In the Chair</h2>
+    <p class="meta" id="chair-empty" {% if state.in_progress %}hidden{% endif %}>No one in the chair right now.</p>
+    <div id="chair-list">
+      {% for entry in state.in_progress %}{% include "_staff_chair_row.html" %}{% endfor %}
+    </div>
+  </div>
+
+  <div class="card staff-section">
+    <h2>Waiting</h2>
+    <p class="meta" id="waiting-empty" {% if state.waiting %}hidden{% endif %}>No one waiting.</p>
+    <div id="waiting-list">
+      {% for entry in state.waiting %}{% set position = loop.index %}{% include "_staff_waiting_row.html" %}{% endfor %}
+    </div>
+  </div>
+
+  <div class="card staff-section" id="recent-card" {% if not state.recent %}hidden{% endif %}>
+    <h2>Recently Finished</h2>
+    <p class="meta">Tapped Complete or Remove by mistake? Undo it here for {{ undo_minutes }} minutes.</p>
+    <div id="recent-list">
+      {% for entry in state.recent %}{% include "_staff_recent_row.html" %}{% endfor %}
+    </div>
+  </div>
+
+  <div class="card store-card{% if location.closed %} is-closed{% endif %}" id="store-card">
+    <div class="staff-row">
+      {% if location.closed %}
+        <div>
+          <strong>Store is closed</strong>
+          <div class="meta">Customers can't check in on the kiosk.</div>
+          {% if schedule_note %}<div class="meta">{{ schedule_note }}</div>{% endif %}
+        </div>
+        <div class="staff-actions">
+          <form method="post" action="{{ url_for('staff.set_store_status', location_slug=location.slug) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="closed" value="0">
+            <button type="submit" class="btn">Open Store</button>
+          </form>
+        </div>
+      {% else %}
+        <div>
+          <strong>Store is open</strong>
+          <div class="meta">Customers can check in on the kiosk.</div>
+          {% if schedule_note %}<div class="meta">{{ schedule_note }}</div>{% endif %}
+        </div>
+        <div class="staff-actions">
+          <form method="post" action="{{ url_for('staff.set_store_status', location_slug=location.slug) }}" data-confirm="Close {{ location.name }} so customers can no longer check in?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="closed" value="1">
+            <button type="submit" class="btn btn-danger">Close Store</button>
+          </form>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
   <div class="card break-card{% if current_user.on_break %} is-on-break{% endif %}" id="break-card">
     <div class="staff-row">
       {% if not current_user.show_on_kiosk %}
@@ -37,30 +93,6 @@
       {% endif %}
     </div>
   </div>
-
-  <div class="card staff-section">
-    <h2>In the Chair</h2>
-    <p class="meta" id="chair-empty" {% if state.in_progress %}hidden{% endif %}>No one in the chair right now.</p>
-    <div id="chair-list">
-      {% for entry in state.in_progress %}{% include "_staff_chair_row.html" %}{% endfor %}
-    </div>
-  </div>
-
-  <div class="card staff-section">
-    <h2>Waiting</h2>
-    <p class="meta" id="waiting-empty" {% if state.waiting %}hidden{% endif %}>No one waiting.</p>
-    <div id="waiting-list">
-      {% for entry in state.waiting %}{% set position = loop.index %}{% include "_staff_waiting_row.html" %}{% endfor %}
-    </div>
-  </div>
-
-  <div class="card staff-section" id="recent-card" {% if not state.recent %}hidden{% endif %}>
-    <h2>Recently Finished</h2>
-    <p class="meta">Tapped Complete or Remove by mistake? Undo it here for {{ undo_minutes }} minutes.</p>
-    <div id="recent-list">
-      {% for entry in state.recent %}{% include "_staff_recent_row.html" %}{% endfor %}
-    </div>
-  </div>
 {% endblock %}
 {% block extra_js %}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
@@ -68,6 +100,7 @@
     window.LOCATION_SLUG = "{{ location.slug }}";
     window.CURRENT_BARBER_ID = {{ current_user.id }};
     window.APP_VERSION = "{{ app_version }}";
+    window.STORE_CLOSED = {{ location.closed | tojson }};
     // entry_id=0 renders as a single trailing "0" character; slicing it off gives a
     // stable prefix to append the real id to, without guessing at slug/path contents.
     window.URLS = {

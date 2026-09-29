@@ -32,6 +32,18 @@ class Location(db.Model):
     slug = db.Column(db.String(120), nullable=False, unique=True)
     address = db.Column(db.String(255))
     active = db.Column(db.Boolean, nullable=False, default=True)
+    # While true the kiosk refuses new check-ins (enforced server-side, not just
+    # hidden). Set by a barber from the staff dashboard, or by the opening-hours
+    # schedule when auto_hours is on (see app/opening_hours.py).
+    closed = db.Column(db.Boolean, nullable=False, default=False)
+    # Open and close on the weekly schedule (opening_hours + special_hours). Off
+    # means the store is only opened and closed by hand.
+    auto_hours = db.Column(db.Boolean, nullable=False, default=False)
+    # Stop new check-ins this many minutes before the scheduled closing time.
+    checkin_cutoff_minutes = db.Column(db.Integer, nullable=False, default=0)
+    # A barber's manual Open/Close that disagrees with the schedule holds until
+    # this time (the next scheduled change, or midnight at the latest).
+    manual_until = db.Column(db.DateTime(timezone=True), nullable=True)
 
     # Bearer secrets for the unattended kiosk tablet / TV display at this
     # location - there's no human to log in on that hardware, so possession
@@ -47,6 +59,12 @@ class Location(db.Model):
         "Barber", back_populates="default_location", foreign_keys="Barber.default_location_id"
     )
     queue_entries = db.relationship("QueueEntry", back_populates="location")
+    # Deleted along with the location by the ORM (not left to ON DELETE CASCADE,
+    # which SQLite only enforces with a pragma).
+    opening_hours = db.relationship("OpeningHours", back_populates="location", cascade="all, delete-orphan")
+    special_hours = db.relationship(
+        "SpecialHours", back_populates="location", cascade="all, delete-orphan", order_by="SpecialHours.date"
+    )
 
     def regenerate_kiosk_token(self):
         self.kiosk_token = generate_token()
@@ -56,6 +74,46 @@ class Location(db.Model):
 
     def __repr__(self):
         return f"<Location {self.slug}>"
+
+
+class OpeningHours(db.Model):
+    """A location's regular hours for one weekday. No row means closed that day."""
+
+    __tablename__ = "opening_hours"
+    __table_args__ = (db.UniqueConstraint("location_id", "weekday"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    location_id = db.Column(
+        db.Integer, db.ForeignKey("locations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    weekday = db.Column(db.SmallInteger, nullable=False)  # 0 = Monday, as date.weekday()
+    opens_at = db.Column(db.Time, nullable=False)
+    closes_at = db.Column(db.Time, nullable=False)
+
+    location = db.relationship("Location", back_populates="opening_hours")
+
+
+class SpecialHours(db.Model):
+    """One date whose hours differ from the weekly schedule, e.g. a public holiday.
+    With no opens_at/closes_at the location is closed all day."""
+
+    __tablename__ = "special_hours"
+    __table_args__ = (db.UniqueConstraint("location_id", "date"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    location_id = db.Column(
+        db.Integer, db.ForeignKey("locations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    date = db.Column(db.Date, nullable=False)
+    opens_at = db.Column(db.Time, nullable=True)
+    closes_at = db.Column(db.Time, nullable=True)
+    note = db.Column(db.String(120))
+
+    location = db.relationship("Location", back_populates="special_hours")
+
+    @property
+    def closed_all_day(self):
+        return self.opens_at is None
 
 
 class Barber(UserMixin, db.Model):
@@ -204,9 +262,10 @@ class LoginAttempt(db.Model):
 
 
 class AdminAction(db.Model):
-    """One entry in the admin activity log (see app/audit.py). Names are copied in
-    at the time, so the log still reads correctly after a barber or location is
-    renamed or deleted."""
+    """One entry in the activity log (see app/audit.py): originally admin-only,
+    now every action the app can produce - admin, barber, customer, automatic and
+    CLI. Names are copied in at the time, so the log still reads correctly after
+    a barber or location is renamed or deleted."""
 
     __tablename__ = "admin_actions"
 
@@ -216,6 +275,9 @@ class AdminAction(db.Model):
     actor_name = db.Column(db.String(120), nullable=False)
     action = db.Column(db.String(64), nullable=False, index=True)
     summary = db.Column(db.String(500), nullable=False)
+    # Who/what kind of actor did it - "admin", "barber", "customer", "automatic"
+    # or "cli" (see app/audit.py) - the Activity tab's broadest filter.
+    category = db.Column(db.String(20), nullable=False, default="admin", index=True)
 
 
 class Setting(db.Model):

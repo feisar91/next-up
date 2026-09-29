@@ -1,17 +1,59 @@
+from datetime import date, datetime, time, timedelta, timezone
+
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app import audit, db
 from app.authz import admin_required
 from app.login_sessions import end_all_sessions, logged_in_barbers
-from app.models import Barber, Location, QueueEntry
-from app.settings import get_timezone_name, set_timezone_name, timezone_choices
+from app.models import Barber, Location, OpeningHours, QueueEntry, SpecialHours
+from app.opening_hours import WEEKDAY_NAMES, apply_schedule, format_clock
+from app.settings import get_timezone, get_timezone_name, set_timezone_name, timezone_choices
 from app.sockets import broadcast_barbers, broadcast_queue, device_status, disconnect_devices
 from app.staff import clear_on_duty, set_on_duty
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
-ACTIVITY_LOG_LIMIT = 100
+ACTIVITY_LOG_LIMIT = 200
+
+
+def _activity_filters():
+    """The Activity tab's filters straight from the query string, plus the date
+    range converted to UTC bounds in the shop's timezone. Unrecognised or
+    unparsable values are dropped rather than erroring - they just won't match
+    anything, same as picking a filter with no matching entries."""
+    args = request.args
+    category = args.get("activity_category") or None
+    if category not in audit.CATEGORY_LABELS:
+        category = None
+    action = args.get("activity_action") or None
+    who = args.get("activity_who") or None
+
+    tz = get_timezone()
+    start = end = None
+    from_date = _parse_date(args.get("activity_from"))
+    if from_date:
+        start = datetime.combine(from_date, time.min, tzinfo=tz).astimezone(timezone.utc)
+    to_date = _parse_date(args.get("activity_to"))
+    if to_date:
+        end = datetime.combine(to_date + timedelta(days=1), time.min, tzinfo=tz).astimezone(timezone.utc)
+
+    return {
+        "category": category,
+        "action": action,
+        "who": who,
+        "from_date": from_date,
+        "to_date": to_date,
+        "start": start,
+        "end": end,
+    }
+
+
+def _parse_date(value):
+    try:
+        return date.fromisoformat(value) if value else None
+    except ValueError:
+        return None
 
 
 @admin_bp.route("/")
@@ -21,6 +63,7 @@ def overview():
     locations = Location.query.order_by(Location.name).all()
     active_locations = [location for location in locations if location.active]
     barbers = Barber.query.order_by(Barber.name).all()
+    filters = _activity_filters()
     return render_template(
         "admin/overview.html",
         locations=locations,
@@ -28,8 +71,21 @@ def overview():
         barbers=barbers,
         logged_in=logged_in_barbers(),
         device_statuses={location.id: device_status(location) for location in active_locations},
-        activity=audit.recent(ACTIVITY_LOG_LIMIT),
+        activity=audit.recent(
+            ACTIVITY_LOG_LIMIT,
+            category=filters["category"],
+            action=filters["action"],
+            actor_name=filters["who"],
+            start=filters["start"],
+            end=filters["end"],
+        ),
         activity_limit=ACTIVITY_LOG_LIMIT,
+        activity_filters=filters,
+        activity_categories=audit.categories(),
+        activity_category_labels=audit.CATEGORY_LABELS,
+        activity_actions=audit.actions_in_use(),
+        activity_actors=audit.actor_names(),
+        activity_action_label=audit.action_label,
         timezone_name=get_timezone_name(),
         timezone_choices=timezone_choices(),
     )
@@ -133,7 +189,7 @@ def edit_barber(barber_id):
             flash(f"Username '{username}' is already taken.", "error")
         else:
             new_location_id = int(default_location_id) if default_location_id else None
-            changes = _barber_changes(barber, name, username, new_location_id, is_admin)
+            changes = audit.barber_changes(barber, name, username, new_location_id, is_admin)
             barber.name = name
             barber.username = username
             barber.default_location_id = new_location_id
@@ -149,22 +205,6 @@ def edit_barber(barber_id):
             return redirect(url_for("admin.overview", _anchor="barbers"))
 
     return render_template("admin/edit_barber.html", barber=barber, locations=locations)
-
-
-def _barber_changes(barber, name, username, default_location_id, is_admin):
-    """Human-readable list of what an edit changes, for the activity log."""
-    changes = []
-    if name != barber.name:
-        changes.append(f"name {barber.name} to {name}")
-    if username != barber.username:
-        changes.append(f"username {barber.username} to {username}")
-    if default_location_id != barber.default_location_id:
-        new_location = db.session.get(Location, default_location_id) if default_location_id else None
-        old_name = barber.default_location.name if barber.default_location else "none"
-        changes.append(f"default location {old_name} to {new_location.name if new_location else 'none'}")
-    if is_admin != barber.is_admin:
-        changes.append("granted admin access" if is_admin else "removed admin access")
-    return changes
 
 
 @admin_bp.route("/barbers/<int:barber_id>/reset-password", methods=["GET", "POST"])
@@ -328,6 +368,193 @@ def toggle_location_active(location_id):
         "success",
     )
     return redirect(url_for("admin.overview", _anchor="locations"))
+
+
+MAX_CHECKIN_CUTOFF_MINUTES = 240
+
+
+def _hours_text(hours):
+    """'9:00 am-5:30 pm', or 'closed' for None."""
+    return f"{format_clock(hours[0])}-{format_clock(hours[1])}" if hours else "closed"
+
+
+def _date_text(day):
+    return f"{WEEKDAY_NAMES[day.weekday()][:3]} {day.day} {day:%b %Y}"
+
+
+def _parse_time(value):
+    try:
+        return time.fromisoformat(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_hours(opens, closes, label):
+    """(opens, closes) from two HH:MM strings, or an error message."""
+    opens, closes = _parse_time(opens), _parse_time(closes)
+    if opens is None or closes is None:
+        return None, f"Enter opening and closing times for {label}."
+    if closes <= opens:
+        return None, f"Closing time must be after opening time for {label}."
+    return (opens, closes), None
+
+
+def _weekly_rows(location, form=None):
+    """One row per weekday for the opening hours form: from the database, or from
+    a submitted form so a failed save keeps what was typed."""
+    saved = {h.weekday: h for h in location.opening_hours}
+    rows = []
+    for weekday, name in enumerate(WEEKDAY_NAMES):
+        if form is not None:
+            row = {
+                "open": bool(form.get(f"open_{weekday}")),
+                "opens": form.get(f"opens_{weekday}", ""),
+                "closes": form.get(f"closes_{weekday}", ""),
+            }
+        elif weekday in saved:
+            hours = saved[weekday]
+            row = {"open": True, "opens": f"{hours.opens_at:%H:%M}", "closes": f"{hours.closes_at:%H:%M}"}
+        else:
+            row = {"open": False, "opens": "09:00", "closes": "17:30"}
+        rows.append({"weekday": weekday, "name": name, **row})
+    return rows
+
+
+def _render_location_hours(location, rows, auto_hours, cutoff):
+    today = datetime.now(get_timezone()).date()
+    return render_template(
+        "admin/location_hours.html",
+        location=location,
+        rows=rows,
+        auto_hours=auto_hours,
+        cutoff=cutoff,
+        special_hours=[s for s in location.special_hours if s.date >= today],
+        today=today.isoformat(),
+        hours_text=_hours_text,
+        date_text=_date_text,
+        max_cutoff=MAX_CHECKIN_CUTOFF_MINUTES,
+    )
+
+
+@admin_bp.route("/locations/<int:location_id>/hours", methods=["GET", "POST"])
+@login_required
+@admin_required
+def location_hours(location_id):
+    location = db.get_or_404(Location, location_id)
+    if request.method == "GET":
+        return _render_location_hours(
+            location, _weekly_rows(location), location.auto_hours, location.checkin_cutoff_minutes
+        )
+
+    rows = _weekly_rows(location, request.form)
+    auto_hours = bool(request.form.get("auto_hours"))
+    cutoff_text = request.form.get("checkin_cutoff_minutes", "").strip() or "0"
+
+    error = None
+    new_hours = {}
+    for row in rows:
+        if row["open"]:
+            new_hours[row["weekday"]], error = _parse_hours(row["opens"], row["closes"], row["name"])
+            if error:
+                break
+    if not error:
+        cutoff = int(cutoff_text) if cutoff_text.isdigit() else -1
+        if not 0 <= cutoff <= MAX_CHECKIN_CUTOFF_MINUTES:
+            error = f"The check-in cutoff must be between 0 and {MAX_CHECKIN_CUTOFF_MINUTES} minutes."
+    if not error and auto_hours and not new_hours:
+        error = "Set opening hours for at least one day before turning on automatic opening."
+    if error:
+        flash(error, "error")
+        return _render_location_hours(location, rows, auto_hours, cutoff_text)
+
+    saved = {h.weekday: h for h in location.opening_hours}
+    changes = []
+    if auto_hours != location.auto_hours:
+        changes.append("turned on automatic opening" if auto_hours else "turned off automatic opening")
+    for weekday, name in enumerate(WEEKDAY_NAMES):
+        old = (saved[weekday].opens_at, saved[weekday].closes_at) if weekday in saved else None
+        new = new_hours.get(weekday)
+        if old != new:
+            changes.append(f"{name[:3]} {_hours_text(old)} to {_hours_text(new)}")
+        if new is None and weekday in saved:
+            location.opening_hours.remove(saved[weekday])
+        elif new is not None and weekday in saved:
+            saved[weekday].opens_at, saved[weekday].closes_at = new
+        elif new is not None:
+            location.opening_hours.append(OpeningHours(weekday=weekday, opens_at=new[0], closes_at=new[1]))
+    if cutoff != location.checkin_cutoff_minutes:
+        changes.append(f"check-in cutoff {location.checkin_cutoff_minutes} to {cutoff} minutes")
+
+    location.auto_hours = auto_hours
+    location.checkin_cutoff_minutes = cutoff
+    # Saving hands control back to the schedule, including over a barber's manual Open/Close.
+    location.manual_until = None
+    db.session.commit()
+    if changes:
+        audit.record("location.hours", f"Changed opening hours for {location.name}: " + "; ".join(changes))
+    apply_schedule(location)
+    flash(f"Opening hours for {location.name} saved.", "success")
+    return redirect(url_for("admin.location_hours", location_id=location.id))
+
+
+@admin_bp.route("/locations/<int:location_id>/special-hours", methods=["POST"])
+@login_required
+@admin_required
+def add_special_hours(location_id):
+    location = db.get_or_404(Location, location_id)
+    back = redirect(url_for("admin.location_hours", location_id=location.id, _anchor="special-hours"))
+    try:
+        day = date.fromisoformat(request.form.get("date", ""))
+    except ValueError:
+        flash("Choose a date.", "error")
+        return back
+    if day < datetime.now(get_timezone()).date():
+        flash("Choose today or a future date.", "error")
+        return back
+
+    closed_all_day = bool(request.form.get("closed_all_day"))
+    hours = None
+    if not closed_all_day:
+        hours, error = _parse_hours(request.form.get("opens"), request.form.get("closes"), _date_text(day))
+        if error:
+            flash(error, "error")
+            return back
+    note = request.form.get("note", "").strip()[:120] or None
+
+    special = next((s for s in location.special_hours if s.date == day), None)
+    if special is None:
+        special = SpecialHours(date=day)
+        location.special_hours.append(special)
+    special.opens_at, special.closes_at = hours if hours else (None, None)
+    special.note = note
+    db.session.commit()
+
+    detail = f" ({note})" if note else ""
+    audit.record(
+        "location.special_hours_set",
+        f"Set {location.name} to {_hours_text(hours)} on {_date_text(day)}{detail}",
+    )
+    apply_schedule(location)
+    flash(f"{_date_text(day)} saved.", "success")
+    return back
+
+
+@admin_bp.route("/locations/<int:location_id>/special-hours/<int:special_id>/delete", methods=["POST"])
+@login_required
+@admin_required
+def delete_special_hours(location_id, special_id):
+    location = db.get_or_404(Location, location_id)
+    special = SpecialHours.query.filter_by(id=special_id, location_id=location.id).first_or_404()
+    day = special.date
+    location.special_hours.remove(special)
+    db.session.commit()
+    audit.record(
+        "location.special_hours_remove",
+        f"Removed the special hours for {location.name} on {_date_text(day)}",
+    )
+    apply_schedule(location)
+    flash(f"{_date_text(day)} is back to the usual hours.", "success")
+    return redirect(url_for("admin.location_hours", location_id=location.id, _anchor="special-hours"))
 
 
 @admin_bp.route("/locations/<int:location_id>/delete", methods=["POST"])

@@ -71,7 +71,9 @@ def test_admin_panel_forbidden_for_non_admin(client, barber):
 def test_profile_updates_default_location(app, client, barber, locations):
     login(client, barber["username"], barber["password"])
     resp = client.post(
-        "/staff/profile", data={"default_location_id": locations["kings-meadows"]}, follow_redirects=True
+        "/staff/profile",
+        data={"form_name": "profile", "name": "Alex", "default_location_id": locations["kings-meadows"]},
+        follow_redirects=True,
     )
     assert resp.status_code == 200
 
@@ -82,11 +84,43 @@ def test_profile_updates_default_location(app, client, barber, locations):
 
 def test_profile_can_clear_default_location(app, client, barber):
     login(client, barber["username"], barber["password"])
-    client.post("/staff/profile", data={"default_location_id": ""}, follow_redirects=True)
+    client.post(
+        "/staff/profile",
+        data={"form_name": "profile", "name": "Alex", "default_location_id": ""},
+        follow_redirects=True,
+    )
 
     with app.app_context():
         barber_obj = db.session.get(Barber, barber["id"])
         assert barber_obj.default_location_id is None
+
+
+def test_profile_saves_name_and_default_location_together(app, client, barber, locations):
+    login(client, barber["username"], barber["password"])
+    resp = client.post(
+        "/staff/profile",
+        data={"form_name": "profile", "name": "Alexander", "default_location_id": locations["kings-meadows"]},
+        follow_redirects=True,
+    )
+
+    assert b"Profile updated." in resp.data
+    with app.app_context():
+        barber_obj = db.session.get(Barber, barber["id"])
+        assert barber_obj.name == "Alexander"
+        assert barber_obj.default_location_id == locations["kings-meadows"]
+
+
+def test_profile_blank_name_saves_nothing(app, client, barber, locations):
+    login(client, barber["username"], barber["password"])
+    client.post(
+        "/staff/profile",
+        data={"form_name": "profile", "name": "  ", "default_location_id": locations["kings-meadows"]},
+    )
+
+    with app.app_context():
+        barber_obj = db.session.get(Barber, barber["id"])
+        assert barber_obj.name == "Alex"
+        assert barber_obj.default_location_id == locations["launceston"]
 
 
 def test_profile_self_service_password_change(app, client, barber):
@@ -238,10 +272,10 @@ def test_admin_can_change_their_display_name(app, client, admin_barber):
 
     login(client, admin_barber["username"], admin_barber["password"])
     resp = client.post(
-        "/staff/profile", data={"form_name": "display_name", "name": "  Morgan  "}, follow_redirects=True
+        "/staff/profile", data={"form_name": "profile", "name": "  Morgan  "}, follow_redirects=True
     )
 
-    assert b"Display name updated." in resp.data
+    assert b"Profile updated." in resp.data
     with app.app_context():
         assert db.session.get(Barber, admin_barber["id"]).name == "Morgan"
 
@@ -251,7 +285,7 @@ def test_display_name_cannot_be_blank(app, client, admin_barber):
     from app.models import Barber
 
     login(client, admin_barber["username"], admin_barber["password"])
-    client.post("/staff/profile", data={"form_name": "display_name", "name": "   "})
+    client.post("/staff/profile", data={"form_name": "profile", "name": "   "})
 
     with app.app_context():
         assert db.session.get(Barber, admin_barber["id"]).name == "Morgan Admin"
@@ -263,10 +297,10 @@ def test_barber_can_change_their_display_name(app, client, barber):
 
     login(client, barber["username"], barber["password"])
     resp = client.post(
-        "/staff/profile", data={"form_name": "display_name", "name": "Alexander"}, follow_redirects=True
+        "/staff/profile", data={"form_name": "profile", "name": "Alexander"}, follow_redirects=True
     )
 
-    assert b"Display name updated." in resp.data
+    assert b"Profile updated." in resp.data
     with app.app_context():
         assert db.session.get(Barber, barber["id"]).name == "Alexander"
 

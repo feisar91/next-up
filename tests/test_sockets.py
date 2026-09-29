@@ -137,6 +137,7 @@ def test_authenticated_staff_can_join_without_a_token(app, locations, barber):
             ("queue_update", "location-kings-meadows-staff"),
             ("queue_update", "location-kings-meadows-display"),
             ("barbers_update", "location-kings-meadows"),
+            ("store_status", "location-kings-meadows"),
         ]
 
 

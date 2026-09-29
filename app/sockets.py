@@ -112,6 +112,16 @@ def broadcast_barbers(location):
     socketio.emit("barbers_update", on_duty_state(location), to=location_room(location.slug))
 
 
+def store_status(location):
+    return {"location": location.slug, "closed": location.closed}
+
+
+def broadcast_store_status(location):
+    """Tells every screen at this location (kiosk included) that open/closed
+    changed, so a kiosk mid check-in switches over without waiting for a reload."""
+    socketio.emit("store_status", store_status(location), to=location_room(location.slug))
+
+
 @socketio.on("join")
 def handle_join(data):
     slug = (data or {}).get("location")
@@ -137,10 +147,10 @@ def handle_join(data):
         return
 
     # After a restart the shop screens only reconnect here (no page load), so
-    # this also starts the off-duty check if no web request has yet.
-    from app.off_duty import start_off_duty_checks
+    # this also starts the background checks if no web request has yet.
+    from app.background import start_background_checks
 
-    start_off_duty_checks(current_app._get_current_object())
+    start_background_checks(current_app._get_current_object())
 
     if device_kind:
         _track_device(location, device_kind)
@@ -151,6 +161,7 @@ def handle_join(data):
         join_room(staff_room(slug))
     broadcast_queue(location)
     broadcast_barbers(location)
+    broadcast_store_status(location)
     # Returned as the join acknowledgement: screens compare it with the version
     # they were loaded with and reload after a deploy (app/static/js/app-version.js).
     return {"version": current_app.config["APP_VERSION"]}
