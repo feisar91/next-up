@@ -193,8 +193,11 @@
     row.querySelector(".queue-number").textContent = "#" + (index + 1);
     row.querySelector("strong").textContent = entry.customer_name;
     const meta = row.querySelector(".meta");
+    // Customers who asked for the barber viewing this page stand out.
+    const mine = entry.preferred_barber_id === window.CURRENT_BARBER_ID;
+    row.classList.toggle("is-mine", mine);
     if (entry.preferred_barber) {
-      meta.textContent = "Prefers " + entry.preferred_barber;
+      meta.textContent = mine ? "Asked for you" : "Prefers " + entry.preferred_barber;
       meta.hidden = false;
     } else {
       meta.hidden = true;

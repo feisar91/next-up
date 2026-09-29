@@ -16,7 +16,15 @@ The kiosk tablet and TV display run unattended with no one to log in on them, bu
 
 The Device Links tab shows whether each shop's kiosk and TV are connected right now ("Online", "Offline since 3:05 pm" or "Never connected"), and warns if more than one screen is using the same link. Regenerating a link, or removing a location, immediately disconnects any screen still open on the old link.
 
-After a deploy, open kiosk, TV and staff dashboard screens reload themselves when their live connection comes back, so nobody has to refresh the shop devices by hand. A kiosk waits until nobody is partway through typing a name.
+After a deploy, open kiosk, TV and staff dashboard screens reload themselves when their live connection comes back, so nobody has to refresh the shop devices by hand. A kiosk waits until nobody is partway through typing a name, and clears a name left untouched for a minute (someone who walked off), so it's neither shown to the next customer nor holding up the reload.
+
+Customers still waiting or in the chair from a previous day are cleared a few minutes after midnight (`QUEUE_CLEANUP_CHECK_SECONDS`, default 300): waiting ones are counted as no-shows and ones in the chair as done, without a time in the chair. The Activity tab notes each clear.
+
+### Home-screen apps
+
+Barbers can add the staff pages to their phone's home screen, and each shop's tablet can do the same with its kiosk, so they open full-screen from an icon with no browser bar. Open the page (the kiosk from its secret link), then use **Add to Home Screen**: Safari's Share menu on iPhone/iPad, or Chrome's menu on Android. The kiosk opens truly full-screen on Android; iPads still show the status bar. On Android, Chrome only opens it as an app over HTTPS; over plain HTTP the icon opens a normal browser tab. The installed app has its own login on iPhones (it doesn't share Safari's), so barbers log in once inside it.
+
+Each kiosk's app remembers its secret link, so after regenerating that link, delete the icon and add it again from the new link.
 
 ### Opening hours
 

@@ -19,6 +19,9 @@ class Config:
     # How often to open or close stores that follow their opening hours (see
     # app/opening_hours.py), i.e. how late after the listed time it can happen. 0 disables it.
     OPENING_HOURS_CHECK_SECONDS = int(os.environ.get("OPENING_HOURS_CHECK_SECONDS", 30))
+    # How often to look for customers left in a queue from before today (see
+    # app/queue_cleanup.py), i.e. how long after midnight they're cleared. 0 disables it.
+    QUEUE_CLEANUP_CHECK_SECONDS = int(os.environ.get("QUEUE_CLEANUP_CHECK_SECONDS", 300))
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     # Only send the login cookie over HTTPS. Set SESSION_COOKIE_SECURE=false if the app
@@ -48,5 +51,6 @@ class TestConfig(Config):
     SESSION_COOKIE_SECURE = False
     # Tests call take_idle_barbers_off_duty() directly instead of a background thread.
     OFF_DUTY_CHECK_SECONDS = 0
-    # ...and apply_all_schedules() directly too.
+    # ...and apply_all_schedules() and clear_leftover_entries() directly too.
     OPENING_HOURS_CHECK_SECONDS = 0
+    QUEUE_CLEANUP_CHECK_SECONDS = 0

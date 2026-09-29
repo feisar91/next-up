@@ -13,6 +13,30 @@
     return Boolean(name && name.value.trim());
   }
 
+  // Someone who types a name and walks off shouldn't leave it for the next
+  // customer to see, or hold off reloads indefinitely: after a minute with no
+  // typing or tapping, clear the form (the deploy reload retries by itself).
+  const IDLE_CLEAR_MS = 60000;
+  const form = document.querySelector(".kiosk-form");
+  let idleTimer = null;
+  let skippedStoreClosed = null; // open/closed state a skipped store_status reload was for
+
+  function clearAbandonedForm() {
+    form.reset(); // empty name, "No preference" selected
+    if (skippedStoreClosed !== null && skippedStoreClosed !== window.STORE_CLOSED) {
+      window.location.reload();
+    }
+  }
+
+  if (form) {
+    ["input", "change", "pointerdown", "keydown"].forEach(function (eventName) {
+      form.addEventListener(eventName, function () {
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(clearAbandonedForm, IDLE_CLEAR_MS);
+      });
+    });
+  }
+
   socket.on("connect", function () {
     socket.emit("join", { location: window.LOCATION_SLUG, token: window.KIOSK_TOKEN }, function (ack) {
       window.checkAppVersion(ack, customerIsTyping);
@@ -27,11 +51,16 @@
 
   // Open/closed changes the whole screen (form vs. "we're closed"), which isn't
   // worth re-rendering client-side - reload, same as an app version change,
-  // unless a customer is partway through checking in.
+  // unless a customer is partway through checking in (then it waits for them to
+  // submit, or for clearAbandonedForm).
   socket.on("store_status", function (state) {
     if (state.location !== window.LOCATION_SLUG) return;
+    skippedStoreClosed = null;
     if (state.closed === window.STORE_CLOSED) return;
-    if (customerIsTyping()) return;
+    if (customerIsTyping()) {
+      skippedStoreClosed = state.closed;
+      return;
+    }
     window.location.reload();
   });
 

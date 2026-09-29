@@ -29,14 +29,16 @@ Customer flow: kiosk check-in creates a `QueueEntry` (`waiting`), a barber calls
 - [app/models.py](app/models.py): `Location`, `OpeningHours` / `SpecialHours`, `Barber` (the login model, also admins), `QueueEntry`, `Setting` (key/value, currently only `timezone`)
 - [app/sockets.py](app/sockets.py): `queue_state` / `broadcast_queue` and `on_duty_state` / `broadcast_barbers`, the `join` handler that gates room access, and the in-memory registry of connected kiosk/TV screens (`device_status`, `disconnect_devices`)
 - [app/audit.py](app/audit.py): activity log covering every action the app can produce, not just admin ones (`audit.record(action, summary, category=...)`; `automatic=True` for changes the app makes itself, no request context for CLI, no logged-in actor for a kiosk check-in - each of those overrides `category` too; `actor_name=` for a non-user actor like `UNKNOWN_ACTOR` on failed logins keeps it), shown filterable (by category/event/who/date) on the admin Activity tab
-- [app/kiosk.py](app/kiosk.py), [app/display.py](app/display.py): token-protected device pages
+- [app/kiosk.py](app/kiosk.py), [app/display.py](app/display.py): token-protected device pages. A kiosk check-in POST always redirects (Post/Redirect/Get), with the "You're checked in" details carried once in the session, so a screen reload can never resubmit it. `kiosk.js` clears a form left idle for a minute.
 - [app/staff.py](app/staff.py): location picker, dashboard, call/complete/remove actions, on-duty tracking
 - [app/admin.py](app/admin.py): locations, barbers, password resets, token regeneration, settings
 - [app/metrics.py](app/metrics.py): admin charts (cuts per day/barber/location, busiest-times heatmap, wait and service times) and the visits CSV export (`/admin/metrics/visits.csv`). PDF is the browser's print of the metrics page (print styles at the end of `brand.css`). Export values go through `_csv_safe` because customer names come from the public kiosk.
+- [app/web_app.py](app/web_app.py): web app manifests for adding the staff pages (`/staff/app.webmanifest`, linked from `base.html`) and each kiosk (`/kiosk/<slug>/<token>/manifest.webmanifest`, token-protected because its start URL is the secret link) to a home screen. Manifests are fetched without cookies, so they must not need a login.
 - [app/auth.py](app/auth.py): login, logout, forced password change
 - [app/authz.py](app/authz.py): `admin_required` decorator
 - [app/opening_hours.py](app/opening_hours.py): automatic opening hours (schedule maths, the manual-hold rule, the background check) and the admin page `admin/location_hours.html` served from [app/admin.py](app/admin.py)
-- [app/background.py](app/background.py): `start_background_checks` starts the off-duty and opening-hours threads
+- [app/queue_cleanup.py](app/queue_cleanup.py): nightly clear of customers left in a queue from before today (waiting become no-shows; in the chair become done with `completed_at = called_at`, which `QueueEntry.has_chair_time` keeps out of chair-time metrics)
+- [app/background.py](app/background.py): `start_background_checks` starts the off-duty, opening-hours and queue-cleanup threads
 - [app/settings.py](app/settings.py): shop timezone (default `Australia/Hobart`), used by metrics for day/hour bucketing
 - [app/cli.py](app/cli.py): `flask bootstrap` (first-run: creates the 3 locations and an `admin` login), `flask seed`, and `flask reset-admin-password` (lockout recovery)
 - [docker/entrypoint.sh](docker/entrypoint.sh): generates/persists `SECRET_KEY`, waits for Postgres, runs `flask db upgrade` then `flask bootstrap`

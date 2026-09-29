@@ -2,8 +2,10 @@
 Socket.IO join (never from create_app, so CLI commands don't start them)."""
 from app.off_duty import start_off_duty_checks
 from app.opening_hours import start_opening_hours_checks
+from app.queue_cleanup import start_queue_cleanup_checks
 
 
 def start_background_checks(app):
     start_off_duty_checks(app)
     start_opening_hours_checks(app)
+    start_queue_cleanup_checks(app)

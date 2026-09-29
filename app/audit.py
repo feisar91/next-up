@@ -71,6 +71,7 @@ ACTION_LABELS = {
     "queue.complete": "Completed customer",
     "queue.remove": "Removed customer (no-show)",
     "queue.undo": "Undid finish",
+    "queue.auto_clear": "Cleared leftover queue",
 }
 
 

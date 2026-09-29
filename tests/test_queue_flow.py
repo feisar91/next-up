@@ -7,13 +7,40 @@ def test_checkin_adds_waiting_entry(app, client, locations):
     resp = client.post(
         kiosk_url(app, "mainstreet"), data={"customer_name": "Jamie", "preferred_barber_id": ""}
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == kiosk_url(app, "mainstreet")
 
     with app.app_context():
         entries = QueueEntry.query.all()
         assert len(entries) == 1
         assert entries[0].customer_name == "Jamie"
         assert entries[0].status == QueueEntry.STATUS_WAITING
+
+
+def test_checkin_confirmation_is_shown_once_and_reloading_it_adds_nobody(app, client, locations):
+    url = kiosk_url(app, "mainstreet")
+    resp = client.post(url, data={"customer_name": "Jamie", "preferred_barber_id": ""}, follow_redirects=True)
+    assert b"You're checked in, Jamie" in resp.data
+
+    # A reload (deploy, store opening/closing) is a plain GET: back to the form, no new entry.
+    resp = client.get(url)
+    assert b"You're checked in" not in resp.data
+    assert b'name="customer_name"' in resp.data
+    with app.app_context():
+        assert QueueEntry.query.count() == 1
+
+
+def test_checkin_to_a_closed_store_redirects_without_adding_anyone(app, client, locations):
+    with app.app_context():
+        Location.query.filter_by(slug="mainstreet").one().closed = True
+        db.session.commit()
+
+    resp = client.post(
+        kiosk_url(app, "mainstreet"), data={"customer_name": "Jamie", "preferred_barber_id": ""}, follow_redirects=True
+    )
+    assert b"We're closed right now" in resp.data
+    with app.app_context():
+        assert QueueEntry.query.count() == 0
 
 
 def test_checkin_requires_name(app, client, locations):
@@ -151,3 +178,37 @@ def test_closing_store_requires_login(client, locations):
     assert resp.status_code == 302
     assert "/login" in resp.headers["Location"]
 
+
+
+def _waiting(app, location_id, name, preferred_barber_id=None):
+    with app.app_context():
+        db.session.add(
+            QueueEntry(location_id=location_id, customer_name=name, preferred_barber_id=preferred_barber_id)
+        )
+        db.session.commit()
+
+
+def test_waiting_customers_who_asked_for_you_are_highlighted(app, client, locations, barber, other_location_barber):
+    _waiting(app, locations["mainstreet"], "Jamie", barber["id"])
+    _waiting(app, locations["mainstreet"], "Robin", other_location_barber["id"])
+    _waiting(app, locations["mainstreet"], "Casey")
+
+    login(client, barber["username"], barber["password"])
+    html = client.get("/staff/mainstreet").data.decode()
+
+    waiting = html[html.index('id="waiting-list"'):]
+    rows = {name: waiting[waiting.rindex('<div class="staff-row', 0, waiting.index(name)):waiting.index(name)]
+            for name in ("Jamie", "Robin", "Casey")}
+    assert "is-mine" in rows["Jamie"]
+    assert "is-mine" not in rows["Robin"] and "is-mine" not in rows["Casey"]
+    assert "Asked for you" in waiting
+    assert "Prefers Sam" in waiting
+
+
+def test_queue_updates_carry_the_preferred_barber_id(app, locations, barber):
+    _waiting(app, locations["mainstreet"], "Jamie", barber["id"])
+    with app.app_context():
+        from app.sockets import staff_queue_state
+
+        state = staff_queue_state(Location.query.filter_by(slug="mainstreet").one())
+    assert state["waiting"][0]["preferred_barber_id"] == barber["id"]
