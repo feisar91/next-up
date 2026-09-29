@@ -111,7 +111,7 @@ def compute_metrics(days, tz):
         cuts_by_day[_as_utc(entry.completed_at).astimezone(tz).date().isoformat()] += 1
         cuts_by_barber[_barber_key(entry.called_by)] += 1
         cuts_by_location[entry.location.name] += 1
-        if entry.called_at:
+        if entry.has_chair_time:
             minutes = _minutes_between(entry.called_at, entry.completed_at)
             service_minutes.append(minutes)
             service_by_barber[_barber_key(entry.called_by)].append(minutes)
@@ -281,11 +281,7 @@ def visits_csv(days, tz):
     )
     for entry in entries:
         wait = round(_minutes_between(entry.checked_in_at, entry.called_at)) if entry.called_at else ""
-        service = (
-            round(_minutes_between(entry.called_at, entry.completed_at))
-            if entry.called_at and entry.completed_at
-            else ""
-        )
+        service = round(_minutes_between(entry.called_at, entry.completed_at)) if entry.has_chair_time else ""
         writer.writerow(
             [
                 local(entry.checked_in_at).date().isoformat(),

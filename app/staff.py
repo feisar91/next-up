@@ -6,6 +6,7 @@ from flask_login import current_user, login_required
 from app import audit, db
 from app.models import MIN_PASSWORD_LENGTH, Location, QueueEntry
 from app.opening_hours import schedule_note, set_store_closed
+from app.web_app import manifest_response
 from app.sockets import UNDO_WINDOW, broadcast_barbers, broadcast_queue, broadcast_store_status, staff_queue_state
 
 staff_bp = Blueprint("staff", __name__)
@@ -59,6 +60,19 @@ def clear_on_duty(barber):
     barber.on_break = False
     db.session.commit()
     broadcast_barbers(location)
+
+
+@staff_bp.route("/staff/app.webmanifest")
+def web_app_manifest():
+    """Lets barbers add the staff pages to their home screen (see app/web_app.py)."""
+    return manifest_response(
+        app_id="/staff",
+        name="Barber on George Staff",
+        short_name="Barber App",
+        start_url=url_for("staff.landing"),
+        scope="/",
+        display="standalone",
+    )
 
 
 @staff_bp.route("/staff")

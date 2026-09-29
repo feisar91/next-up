@@ -323,6 +323,20 @@ label {
   color: var(--bog-red);
 }
 
+/* A waiting customer who asked for the barber viewing the page. */
+.staff-row.is-mine {
+  background: var(--bog-off-white);
+  box-shadow: inset 4px 0 0 var(--bog-red);
+  padding-left: 0.9rem;
+  padding-right: 0.5rem;
+  border-radius: 6px;
+}
+
+.staff-row.is-mine .meta {
+  color: var(--bog-red-dark);
+  font-weight: 600;
+}
+
 .break-card {
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;

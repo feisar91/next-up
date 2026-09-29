@@ -1,7 +1,9 @@
-<div class="staff-row" data-key="{{ entry.id }}">
+{# Keep in step with updateWaitingRow in staff.js, which redraws this row live. #}
+{% set mine = entry.preferred_barber_id == current_user.id %}
+<div class="staff-row{% if mine %} is-mine{% endif %}" data-key="{{ entry.id }}">
   <div>
     <span class="queue-number">#{{ position }}</span> <strong>{{ entry.customer_name }}</strong>
-    <div class="meta" {% if not entry.preferred_barber %}hidden{% endif %}>Prefers {{ entry.preferred_barber or "" }}</div>
+    <div class="meta" {% if not entry.preferred_barber %}hidden{% endif %}>{% if mine %}Asked for you{% else %}Prefers {{ entry.preferred_barber or "" }}{% endif %}</div>
   </div>
   <div class="staff-actions">
     <form method="post" action="{{ url_for('staff.call_customer', location_slug=location.slug, entry_id=entry.id) }}">

@@ -220,11 +220,19 @@ class QueueEntry(db.Model):
             return as_utc(self.removed_at)
         return None
 
+    @property
+    def has_chair_time(self):
+        """Whether time in the chair is known. Entries closed off by the nightly
+        cleanup (app/queue_cleanup.py) are marked done with completed_at equal to
+        called_at, since nobody recorded when the cut actually finished."""
+        return bool(self.called_at and self.completed_at and self.completed_at > self.called_at)
+
     def to_dict(self, short_name=False):
         return {
             "id": self.id,
             "customer_name": shorten_name(self.customer_name) if short_name else self.customer_name,
             "preferred_barber": self.preferred_barber.name if self.preferred_barber else None,
+            "preferred_barber_id": self.preferred_barber_id,
             "status": self.status,
             "checked_in_at": self.checked_in_at.isoformat(),
             "called_by": self.called_by.name if self.called_by else None,

@@ -1,7 +1,8 @@
-from datetime import date, timedelta
+from datetime import datetime, timedelta
 
 from app import audit, db
 from app.models import AdminAction, Barber, QueueEntry
+from app.settings import get_timezone
 from tests.conftest import kiosk_url, login
 
 
@@ -358,7 +359,8 @@ def test_activity_tab_filters_by_date_range(app, client, admin_barber, locations
     login(client, "morgan", "password123")
     client.post("/admin/locations", data={"name": "Hobart", "slug": "hobart"})
 
-    tomorrow = (date.today() + timedelta(days=1)).isoformat()
+    # The filter works in shop time, so "tomorrow" must be too, not the server's UTC date.
+    tomorrow = (datetime.now(get_timezone()).date() + timedelta(days=1)).isoformat()
     resp = client.get(f"/admin/?activity_from={tomorrow}")
     assert b"Created location Hobart" not in resp.data
 
