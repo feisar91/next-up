@@ -146,6 +146,15 @@
   text-align: center;
 }
 
+.kiosk-closed {
+  text-align: center;
+}
+
+.kiosk-closed .confirm-note {
+  color: var(--brand-grey);
+  margin-top: 1rem;
+}
+
 .confirm-icon svg {
   width: 72px;
   height: 72px;

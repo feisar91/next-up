@@ -24,6 +24,16 @@
     });
   });
 
+  // A link to the page you're already on (plus a #tab) only scrolls, it never
+  // reloads, so [data-reload] links reload explicitly. The URL, query string
+  // (applied filters) and #tab all survive a reload.
+  document.querySelectorAll("[data-reload]").forEach(function (link) {
+    link.addEventListener("click", function (event) {
+      event.preventDefault();
+      window.location.reload();
+    });
+  });
+
   const initialTab = window.location.hash.replace("#", "");
   if (!initialTab || !activate(initialTab)) {
     activate(tabButtons[0].dataset.tab);

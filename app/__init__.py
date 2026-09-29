@@ -87,9 +87,9 @@ def create_app(config_class=Config):
 
     @app.before_request
     def start_background_checks():
-        from app.off_duty import start_off_duty_checks
+        from app.background import start_background_checks
 
-        start_off_duty_checks(app)
+        start_background_checks(app)
 
     @app.before_request
     def enforce_password_change():
@@ -114,13 +114,14 @@ def create_app(config_class=Config):
         """Format a UTC timestamp in the shop timezone: '3:05 pm' today, else '24 Sep, 3:05 pm'."""
         from datetime import datetime, timezone
 
+        from app.opening_hours import format_clock
         from app.settings import get_timezone
 
         if value.tzinfo is None:  # SQLite (tests) hands back naive UTC datetimes
             value = value.replace(tzinfo=timezone.utc)
         tz = get_timezone()
         local = value.astimezone(tz)
-        time_text = f"{local.hour % 12 or 12}:{local:%M} {'am' if local.hour < 12 else 'pm'}"
+        time_text = format_clock(local)
         if local.date() == datetime.now(tz).date():
             return time_text
         return f"{local.day} {local:%b}, {time_text}"

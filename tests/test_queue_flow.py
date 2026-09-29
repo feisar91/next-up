@@ -1,5 +1,5 @@
 from app import db
-from app.models import QueueEntry
+from app.models import Location, QueueEntry
 from tests.conftest import kiosk_url, login
 
 
@@ -21,6 +21,16 @@ def test_checkin_requires_name(app, client, locations):
 
     with app.app_context():
         assert QueueEntry.query.count() == 0
+
+
+def test_kiosk_name_field_turns_off_browser_suggestions(app, client, locations):
+    html = client.get(kiosk_url(app, "mainstreet")).data.decode()
+    assert '<form class="kiosk-form" method="post" autocomplete="off">' in html
+    name_input = html[html.index('id="customer_name"'):]
+    name_input = name_input[: name_input.index(">")]
+    assert 'autocomplete="off"' in name_input
+    assert 'autocorrect="off"' in name_input
+    assert 'spellcheck="false"' in name_input
 
 
 def test_checkin_unknown_location_404s(client):
@@ -106,3 +116,38 @@ def test_queue_position_ordering(app, client, locations):
             .all()
         )
         assert [e.customer_name for e in entries] == ["First", "Second"]
+
+
+def test_closed_store_shows_closed_message_and_rejects_checkin(app, client, locations):
+    with app.app_context():
+        Location.query.filter_by(slug="mainstreet").update({"closed": True})
+        db.session.commit()
+
+    resp = client.get(kiosk_url(app, "mainstreet"))
+    assert resp.status_code == 200
+    assert b"closed" in resp.data.lower()
+
+    client.post(kiosk_url(app, "mainstreet"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
+    with app.app_context():
+        assert QueueEntry.query.count() == 0
+
+
+def test_barber_can_close_and_reopen_store(app, client, locations, barber):
+    login(client, barber["username"], barber["password"])
+
+    resp = client.post("/staff/mainstreet/store", data={"closed": "1"}, follow_redirects=True)
+    assert resp.status_code == 200
+    with app.app_context():
+        assert Location.query.filter_by(slug="mainstreet").first().closed is True
+
+    resp = client.post("/staff/mainstreet/store", data={"closed": "0"}, follow_redirects=True)
+    assert resp.status_code == 200
+    with app.app_context():
+        assert Location.query.filter_by(slug="mainstreet").first().closed is False
+
+
+def test_closing_store_requires_login(client, locations):
+    resp = client.post("/staff/mainstreet/store", data={"closed": "1"})
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+

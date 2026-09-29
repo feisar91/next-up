@@ -163,6 +163,9 @@ a {
 
 input[type="text"],
 input[type="password"],
+input[type="date"],
+input[type="time"],
+input[type="number"],
 select {
   width: 100%;
   font-size: 1.1rem;
@@ -170,6 +173,8 @@ select {
   border: 1px solid var(--brand-grey-light);
   border-radius: 8px;
   font-family: var(--font-body);
+  background: #fff;
+  color: var(--brand-charcoal);
 }
 
 label {
@@ -324,6 +329,15 @@ label {
 }
 
 .break-card.is-on-break {
+  border-left: 6px solid var(--brand-red);
+}
+
+.store-card {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.store-card.is-closed {
   border-left: 6px solid var(--brand-red);
 }
 
@@ -549,6 +563,52 @@ label {
   gap: 0.75rem;
   flex-wrap: wrap;
   margin-bottom: 1.5rem;
+}
+
+/* --- Activity tab filters --- */
+
+.activity-filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  background: var(--brand-off-white);
+  border: 1px solid var(--brand-grey-light);
+  border-radius: 10px;
+}
+
+.activity-filters .field {
+  margin-bottom: 0;
+  flex: 1 1 160px;
+  min-width: 140px;
+}
+
+.activity-filters .field label {
+  font-size: 0.85rem;
+  margin-bottom: 0.3rem;
+}
+
+.activity-filters .field-date {
+  flex: 0 1 150px;
+  min-width: 130px;
+}
+
+.activity-filters .field-date input {
+  padding: 0.75rem 0.5rem;
+}
+
+.activity-filters-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.activity-filters-actions .btn {
+  min-height: 48px;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.9rem;
 }
 
 .metrics-filter select {

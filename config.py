@@ -16,6 +16,9 @@ class Config:
     # How often to take barbers with no live login off duty once they've been on
     # duty longer than the session lifetime (see app/off_duty.py). 0 disables it.
     OFF_DUTY_CHECK_SECONDS = int(os.environ.get("OFF_DUTY_CHECK_SECONDS", 300))
+    # How often to open or close stores that follow their opening hours (see
+    # app/opening_hours.py), i.e. how late after the listed time it can happen. 0 disables it.
+    OPENING_HOURS_CHECK_SECONDS = int(os.environ.get("OPENING_HOURS_CHECK_SECONDS", 30))
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     # Only send the login cookie over HTTPS. Set SESSION_COOKIE_SECURE=false if the app
@@ -45,3 +48,5 @@ class TestConfig(Config):
     SESSION_COOKIE_SECURE = False
     # Tests call take_idle_barbers_off_duty() directly instead of a background thread.
     OFF_DUTY_CHECK_SECONDS = 0
+    # ...and apply_all_schedules() directly too.
+    OPENING_HOURS_CHECK_SECONDS = 0

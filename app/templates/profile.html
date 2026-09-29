@@ -6,7 +6,7 @@
   <div class="card" style="max-width:480px;">
     <form method="post">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <input type="hidden" name="form_name" value="display_name">
+      <input type="hidden" name="form_name" value="profile">
       <div class="field">
         <label for="name">Display name</label>
         <input type="text" id="name" name="name" value="{{ current_user.name }}" maxlength="120" required>
@@ -14,13 +14,7 @@
       <p class="meta" style="color:var(--brand-grey);">
         Shown on the check-in kiosk, the staff dashboard and in metrics.
       </p>
-      <button type="submit" class="btn">Save Name</button>
-    </form>
-    <p><strong>Username:</strong> {{ current_user.username }}</p>
-
-    <form method="post">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <input type="hidden" name="form_name" value="default_location">
+      <p><strong>Username:</strong> {{ current_user.username }}</p>
       <div class="field">
         <label for="default_location_id">Default location</label>
         <select id="default_location_id" name="default_location_id">
@@ -35,7 +29,7 @@
       <p class="meta" style="color:var(--brand-grey);">
         This is offered as a one-click option on the location picker after you log in - it won't stop you choosing a different location on any given day.
       </p>
-      <button type="submit" class="btn">Save</button>
+      <button type="submit" class="btn">Save Profile</button>
     </form>
   </div>
 

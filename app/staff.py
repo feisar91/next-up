@@ -3,9 +3,10 @@ from datetime import datetime, timezone
 from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required
 
-from app import db
+from app import audit, db
 from app.models import MIN_PASSWORD_LENGTH, Location, QueueEntry
-from app.sockets import UNDO_WINDOW, broadcast_barbers, broadcast_queue, staff_queue_state
+from app.opening_hours import schedule_note, set_store_closed
+from app.sockets import UNDO_WINDOW, broadcast_barbers, broadcast_queue, broadcast_store_status, staff_queue_state
 
 staff_bp = Blueprint("staff", __name__)
 
@@ -22,9 +23,10 @@ def _get_location_or_404(location_slug):
 def set_on_duty(barber, location):
     """Mark a barber as working at `location`, so the kiosk's preferred-barber
     list picks them up live. Broadcasts to both the old and new location rooms
-    so the outgoing location's kiosk drops them and the new one adds them."""
+    so the outgoing location's kiosk drops them and the new one adds them.
+    Returns whether anything changed."""
     if barber.on_duty_location_id == location.id:
-        return
+        return False
     previous_location = barber.on_duty_location
     barber.on_duty_location_id = location.id
     barber.on_duty_since = datetime.now(timezone.utc)
@@ -32,6 +34,20 @@ def set_on_duty(barber, location):
     if previous_location:
         broadcast_barbers(previous_location)
     broadcast_barbers(location)
+    return True
+
+
+def _work_at(location):
+    """Put the logged-in barber on duty at `location`, logging it when that's a
+    change (a first pick after logging in, or a move from another shop)."""
+    previous = current_user.on_duty_location
+    if not set_on_duty(current_user, location):
+        return
+    if previous:
+        summary = f"{current_user.name} moved from {previous.name} to {location.name}"
+    else:
+        summary = f"{current_user.name} started working at {location.name}"
+    audit.record("session.location", summary, category=audit.CATEGORY_BARBER)
 
 
 def clear_on_duty(barber):
@@ -104,27 +120,39 @@ def profile():
                 from app.login_sessions import end_all_sessions
 
                 end_all_sessions(current_user, keep_current=True)
+                audit.record(
+                    "barber.change_own_password",
+                    f"{current_user.name} changed their password",
+                    category=audit.CATEGORY_BARBER,
+                )
                 flash("Password updated.", "success")
             return redirect(url_for("staff.profile"))
 
-        if request.form.get("form_name") == "display_name":
-            name = request.form.get("name", "").strip()
-            if not name:
-                flash("Display name can't be empty.", "error")
-            else:
-                current_user.name = name
-                db.session.commit()
-                # The name shows on the kiosk's barber list and on queue entries.
-                if current_user.on_duty_location:
-                    broadcast_barbers(current_user.on_duty_location)
-                    broadcast_queue(current_user.on_duty_location)
-                flash("Display name updated.", "success")
+        name = request.form.get("name", "").strip()
+        if not name:
+            flash("Display name can't be empty.", "error")
             return redirect(url_for("staff.profile"))
 
+        name_changed = name != current_user.name
         location_id = request.form.get("default_location_id") or None
-        current_user.default_location_id = int(location_id) if location_id else None
+        location_id = int(location_id) if location_id else None
+        changes = audit.barber_changes(
+            current_user, name, current_user.username, location_id, current_user.is_admin
+        )
+        current_user.name = name
+        current_user.default_location_id = location_id
         db.session.commit()
-        flash("Default location updated.", "success")
+        if changes:
+            audit.record(
+                "barber.edit_own_profile",
+                f"{name} updated their profile: " + "; ".join(changes),
+                category=audit.CATEGORY_BARBER,
+            )
+        # The name shows on the kiosk's barber list and on queue entries.
+        if name_changed and current_user.on_duty_location:
+            broadcast_barbers(current_user.on_duty_location)
+            broadcast_queue(current_user.on_duty_location)
+        flash("Profile updated.", "success")
         return redirect(url_for("staff.profile"))
 
     return render_template("profile.html", locations=locations)
@@ -135,14 +163,34 @@ def profile():
 def dashboard(location_slug):
     location = _get_location_or_404(location_slug)
     session[ACTIVE_LOCATION_SESSION_KEY] = location.id
-    set_on_duty(current_user, location)
+    _work_at(location)
     state = staff_queue_state(location)
     return render_template(
         "staff_dashboard.html",
         location=location,
         state=state,
+        schedule_note=schedule_note(location),
         undo_minutes=int(UNDO_WINDOW.total_seconds() // 60),
     )
+
+
+@staff_bp.route("/staff/<location_slug>/store", methods=["POST"])
+@login_required
+def set_store_status(location_slug):
+    """Close the store to new check-ins (e.g. no barbers rostered) or reopen it.
+    The kiosk enforces this server-side too, in case a stale page still POSTs a
+    check-in. The form sends the state it wants, same reasoning as set_break."""
+    location = _get_location_or_404(location_slug)
+    closed = request.form.get("closed") == "1"
+    if closed != location.closed:
+        set_store_closed(location, closed)
+        broadcast_store_status(location)
+        audit.record(
+            "location.close" if closed else "location.open",
+            f"{'Closed' if closed else 'Opened'} {location.name} to new check-ins",
+            category=audit.CATEGORY_BARBER,
+        )
+    return redirect(url_for("staff.dashboard", location_slug=location.slug))
 
 
 @staff_bp.route("/staff/<location_slug>/break", methods=["POST"])
@@ -152,10 +200,18 @@ def set_break(location_slug):
     sends the state it wants rather than toggling, so a stale page on a second
     device can't flip it the wrong way."""
     location = _get_location_or_404(location_slug)
-    set_on_duty(current_user, location)
-    current_user.on_break = request.form.get("on_break") == "1"
+    _work_at(location)
+    on_break = request.form.get("on_break") == "1"
+    changed = on_break != current_user.on_break
+    current_user.on_break = on_break
     db.session.commit()
     broadcast_barbers(location)
+    if changed:
+        audit.record(
+            "barber.break_start" if on_break else "barber.break_end",
+            f"{current_user.name} {'went on break' if on_break else 'came back from break'} at {location.name}",
+            category=audit.CATEGORY_BARBER,
+        )
     return redirect(url_for("staff.dashboard", location_slug=location.slug))
 
 
@@ -173,6 +229,11 @@ def call_customer(location_slug, entry_id):
     db.session.commit()
 
     broadcast_queue(location)
+    audit.record(
+        "queue.call",
+        f"Called {entry.customer_name} to the chair at {location.name}",
+        category=audit.CATEGORY_BARBER,
+    )
     return redirect(url_for("staff.dashboard", location_slug=location.slug))
 
 
@@ -189,6 +250,11 @@ def complete_customer(location_slug, entry_id):
     db.session.commit()
 
     broadcast_queue(location)
+    audit.record(
+        "queue.complete",
+        f"Completed {entry.customer_name} at {location.name}",
+        category=audit.CATEGORY_BARBER,
+    )
     return redirect(url_for("staff.dashboard", location_slug=location.slug))
 
 
@@ -205,6 +271,11 @@ def remove_customer(location_slug, entry_id):
     db.session.commit()
 
     broadcast_queue(location)
+    audit.record(
+        "queue.remove",
+        f"Removed {entry.customer_name} from the queue at {location.name} (no-show)",
+        category=audit.CATEGORY_BARBER,
+    )
     return redirect(url_for("staff.dashboard", location_slug=location.slug))
 
 
@@ -226,7 +297,8 @@ def undo_finish(location_slug, entry_id):
         flash(f"Too late to undo: {entry.customer_name} finished more than {minutes} minutes ago.", "error")
         return redirect(url_for("staff.dashboard", location_slug=location.slug))
 
-    if entry.status == QueueEntry.STATUS_DONE:
+    undone_complete = entry.status == QueueEntry.STATUS_DONE
+    if undone_complete:
         entry.status = QueueEntry.STATUS_IN_PROGRESS
         entry.completed_at = None
     else:
@@ -235,4 +307,9 @@ def undo_finish(location_slug, entry_id):
     db.session.commit()
 
     broadcast_queue(location)
+    audit.record(
+        "queue.undo",
+        f"Undid {'completing' if undone_complete else 'removing'} {entry.customer_name} at {location.name}",
+        category=audit.CATEGORY_BARBER,
+    )
     return redirect(url_for("staff.dashboard", location_slug=location.slug))

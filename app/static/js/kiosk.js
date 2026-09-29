@@ -2,8 +2,10 @@
 // so a barber logging in at this location shows up here without a page reload.
 (function () {
   const socket = io({ path: "/updates" });
+  // Only present on the check-in form, not on the "we're closed" screen - but
+  // the socket still needs to connect and listen there too, for store_status
+  // to bring the form back without a manual refresh.
   const group = document.getElementById("barber-chip-group");
-  if (!group) return;
 
   // Don't reload for an update while a customer is partway through checking in.
   function customerIsTyping() {
@@ -18,8 +20,19 @@
   });
 
   socket.on("barbers_update", function (state) {
+    if (!group) return;
     if (state.location !== window.LOCATION_SLUG) return;
     renderBarbers(state.barbers);
+  });
+
+  // Open/closed changes the whole screen (form vs. "we're closed"), which isn't
+  // worth re-rendering client-side - reload, same as an app version change,
+  // unless a customer is partway through checking in.
+  socket.on("store_status", function (state) {
+    if (state.location !== window.LOCATION_SLUG) return;
+    if (state.closed === window.STORE_CLOSED) return;
+    if (customerIsTyping()) return;
+    window.location.reload();
   });
 
   function renderBarbers(barbers) {

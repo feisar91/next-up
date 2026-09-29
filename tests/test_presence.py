@@ -29,6 +29,21 @@ def test_barber_disappears_from_kiosk_after_logout(app, client, locations, barbe
     resp = client.get(kiosk_url(app, "mainstreet"))
     assert b"Alex" not in resp.data
 
+
+def test_kiosk_receives_live_update_when_store_closes(app, client, locations, barber):
+    kiosk_token, _ = _tokens(app, "mainstreet")
+    login(client, barber["username"], barber["password"])
+
+    sio_client = socketio.test_client(app, flask_test_client=app.test_client())
+    sio_client.emit("join", {"location": "mainstreet", "token": kiosk_token})
+    sio_client.get_received()
+
+    client.post("/staff/mainstreet/store", data={"closed": "1"})
+
+    updates = [evt["args"][0] for evt in sio_client.get_received() if evt["name"] == "store_status"]
+    assert updates and updates[-1]["closed"] is True
+    sio_client.disconnect()
+
     with app.app_context():
         updated = db.session.get(Barber, barber["id"])
         assert updated.on_duty_location_id is None
@@ -161,7 +176,7 @@ def test_kiosk_receives_live_update_when_on_duty_barber_renames_themselves(app, 
     sio_client.emit("join", {"location": "mainstreet", "token": kiosk_token})
     sio_client.get_received()
 
-    barber_client.post("/staff/profile", data={"form_name": "display_name", "name": "Alexander"})
+    barber_client.post("/staff/profile", data={"form_name": "profile", "name": "Alexander"})
 
     updates = [evt["args"][0] for evt in sio_client.get_received() if evt["name"] == "barbers_update"]
     assert updates, "kiosk got no barbers_update after the rename"
