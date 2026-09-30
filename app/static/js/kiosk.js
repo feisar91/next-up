@@ -37,6 +37,18 @@
     });
   }
 
+  // A check-in sent while the server can't be reached would leave the tablet on
+  // the browser's error page, so hold the button until the connection is back.
+  // (A button already showing its loading state is mid-submit: leave it alone.)
+  window.watchConnection(socket, function (lost) {
+    const button = form && form.querySelector("button[type=submit]");
+    if (button && !button.classList.contains("is-loading")) button.disabled = lost;
+  });
+
+  // Swapping the announcement text doesn't disturb a customer partway through
+  // typing, so unlike the store_status reload below it never waits.
+  window.watchAnnouncement(socket);
+
   socket.on("connect", function () {
     socket.emit("join", { location: window.LOCATION_SLUG, token: window.KIOSK_TOKEN }, function (ack) {
       window.checkAppVersion(ack, customerIsTyping);

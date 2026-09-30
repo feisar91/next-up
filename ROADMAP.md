@@ -18,9 +18,6 @@ Record each on-duty stretch (start, end, location) in its own table instead of o
 ### Check in a group (small)
 An "add another person" option on the kiosk, so a parent with two kids checks in once and gets consecutive places. Each person stays a separate `QueueEntry`; the confirmation screen lists everyone's position.
 
-### Announcements on the TV (small)
-A line of text an admin (or barber) can set per location, e.g. "EFTPOS only today" or "Kids' cuts $20 on Tuesdays", shown on the TV display. Broadcast it to the display room like the queue, so it appears without a reload.
-
 ### Text me when I'm nearly up (medium, running costs)
 The customer adds a mobile number at check-in and gets an SMS when they're about two away, so they can step out without losing their spot. Needs an SMS provider (charged per message), and adds personal data to handle: delete numbers once the visit is finished.
 
@@ -28,12 +25,6 @@ The customer adds a mobile number at check-in and gets an SMS when they're about
 
 ### Keep the screens awake (small)
 Ask the browser not to dim or lock the kiosk and TV screens (the Screen Wake Lock API, re-requested when the page becomes visible again). Tablets often sleep despite their settings.
-
-### "Connection lost" warning on the kiosk and staff screens (small)
-The TV already notices when its live connection drops (`display.js`); the kiosk and staff dashboard don't. Show a banner while disconnected, so nobody checks in on a kiosk that can't reach the server, and barbers know their list isn't updating.
-
-### Warn staff when a kiosk is offline during opening hours (small)
-A note on the staff dashboard's store card like "The kiosk isn't connected", while the store is open. Connection status is already tracked (`device_status` in `app/sockets.py`, shown on the admin Device Links tab).
 
 ## For the owner
 

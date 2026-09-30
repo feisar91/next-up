@@ -16,7 +16,13 @@ The kiosk tablet and TV display run unattended with no one to log in on them, bu
 
 The Device Links tab shows whether each shop's kiosk and TV are connected right now ("Online", "Offline since 3:05 pm" or "Never connected"), and warns if more than one screen is using the same link. Regenerating a link, or removing a location, immediately disconnects any screen still open on the old link.
 
+Each shop can show a one-line announcement on its TV and kiosk, such as "EFTPOS is down - cash only today". Barbers set it from the Announcement card on their dashboard, and admins from the Locations tab. It appears on the screens straight away and clears itself at midnight, so it's for today's news: a regular promotion needs setting each day.
+
+While a store is open, the staff dashboard's store card says "The kiosk isn't connected" if that shop's kiosk has been off for more than a minute (a kiosk briefly drops off on every check-in, so shorter gaps don't count). It updates live and clears as soon as the kiosk is back. A location whose kiosk has never connected gets no warning.
+
 After a deploy, open kiosk, TV and staff dashboard screens reload themselves when their live connection comes back, so nobody has to refresh the shop devices by hand. A kiosk waits until nobody is partway through typing a name, and clears a name left untouched for a minute (someone who walked off), so it's neither shown to the next customer nor holding up the reload.
+
+If a kiosk, TV or staff dashboard loses its live connection for more than a few seconds, a red "Connection lost" banner shows across the top until it reconnects. The kiosk also holds its Check In button while the banner is up, so a customer can't send a check-in that would fail. On the staff dashboard it tells barbers their queue isn't updating.
 
 Customers still waiting or in the chair from a previous day are cleared a few minutes after midnight (`QUEUE_CLEANUP_CHECK_SECONDS`, default 300): waiting ones are counted as no-shows and ones in the chair as done, without a time in the chair. The Activity tab notes each clear.
 

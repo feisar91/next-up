@@ -4,17 +4,14 @@
   const waitingList = document.getElementById("waiting-list");
   const chairEmpty = document.getElementById("chair-empty");
   const waitingEmpty = document.getElementById("waiting-empty");
-  const connectionBanner = document.getElementById("connection-banner");
+
+  window.watchConnection(socket);
+  window.watchAnnouncement(socket);
 
   socket.on("connect", function () {
-    connectionBanner.hidden = true;
     socket.emit("join", { location: window.LOCATION_SLUG, token: window.DISPLAY_TOKEN }, function (ack) {
       window.checkAppVersion(ack);
     });
-  });
-
-  socket.on("disconnect", function () {
-    connectionBanner.hidden = false;
   });
 
   socket.on("queue_update", function (state) {
