@@ -4,10 +4,19 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, s
 from flask_login import current_user, login_required
 
 from app import audit, db
+from app.announcements import MAX_LENGTH as ANNOUNCEMENT_MAX_LENGTH
+from app.announcements import current_announcement, set_announcement
 from app.models import MIN_PASSWORD_LENGTH, Location, QueueEntry
 from app.opening_hours import schedule_note, set_store_closed
 from app.web_app import manifest_response
-from app.sockets import UNDO_WINDOW, broadcast_barbers, broadcast_queue, broadcast_store_status, staff_queue_state
+from app.sockets import (
+    UNDO_WINDOW,
+    broadcast_barbers,
+    broadcast_queue,
+    broadcast_store_status,
+    kiosk_status,
+    staff_queue_state,
+)
 
 staff_bp = Blueprint("staff", __name__)
 
@@ -184,6 +193,9 @@ def dashboard(location_slug):
         location=location,
         state=state,
         schedule_note=schedule_note(location),
+        kiosk_offline=kiosk_status(location)["offline"],
+        announcement=current_announcement(location),
+        announcement_max_length=ANNOUNCEMENT_MAX_LENGTH,
         undo_minutes=int(UNDO_WINDOW.total_seconds() // 60),
     )
 
@@ -204,6 +216,15 @@ def set_store_status(location_slug):
             f"{'Closed' if closed else 'Opened'} {location.name} to new check-ins",
             category=audit.CATEGORY_BARBER,
         )
+    return redirect(url_for("staff.dashboard", location_slug=location.slug))
+
+
+@staff_bp.route("/staff/<location_slug>/announcement", methods=["POST"])
+@login_required
+def set_location_announcement(location_slug):
+    """Set the announcement on this shop's TV and kiosk until midnight; empty text clears it."""
+    location = _get_location_or_404(location_slug)
+    set_announcement(location, request.form.get("announcement", ""), category=audit.CATEGORY_BARBER)
     return redirect(url_for("staff.dashboard", location_slug=location.slug))
 
 

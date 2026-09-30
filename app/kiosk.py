@@ -3,6 +3,7 @@ import secrets
 from flask import Blueprint, abort, redirect, render_template, request, session, url_for
 
 from app import audit, db
+from app.announcements import current_announcement
 from app.models import Location, QueueEntry
 from app.opening_hours import reopens_text
 from app.sockets import broadcast_queue, kiosk_barbers, queue_state
@@ -41,6 +42,7 @@ def check_in(location_slug, token):
         barbers=barbers,
         confirmation=confirmation,
         reopens=reopens_text(location),
+        announcement=current_announcement(location),
     )
 
 

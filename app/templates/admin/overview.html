@@ -92,6 +92,32 @@
         <button type="submit" class="btn">Add Location</button>
       </form>
     </div>
+
+    <div class="card">
+      <h2>Announcements</h2>
+      <p class="meta">A line on each shop's TV and kiosk, e.g. "EFTPOS is down - cash only today". Barbers can set it from their dashboard too. It clears itself at midnight.</p>
+      {% for location in active_locations %}
+        {% set announcement = announcements[location.id] %}
+        <form method="post" action="{{ url_for('admin.set_location_announcement', location_id=location.id) }}" style="margin-top:1rem;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label for="announcement-{{ location.id }}"><strong>{{ location.name }}</strong></label>
+          <div class="announcement-fields">
+            <input type="text" id="announcement-{{ location.id }}" name="announcement" maxlength="{{ announcement_max_length }}"
+                   value="{{ announcement or '' }}" placeholder="No announcement showing" autocomplete="off">
+            <button type="submit" class="btn">Save</button>
+            {% if announcement %}
+              <button type="submit" class="btn btn-secondary" form="announcement-clear-{{ location.id }}">Clear</button>
+            {% endif %}
+          </div>
+        </form>
+        <form method="post" action="{{ url_for('admin.set_location_announcement', location_id=location.id) }}" id="announcement-clear-{{ location.id }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="announcement" value="">
+        </form>
+      {% else %}
+        <p class="meta">No locations yet.</p>
+      {% endfor %}
+    </div>
   </div>
 
   <div class="tab-panel" data-tab-panel="device-links">

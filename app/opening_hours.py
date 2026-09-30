@@ -123,6 +123,12 @@ def schedule_note(location, now=None):
     if not change:
         return None
     when = describe_when(change, now)
+    if _manual_hold(location, now):
+        # Opened or closed by hand against the schedule: say so, or a late opening's
+        # "at midnight" (when the hold ends) reads like a default.
+        if location.closed:
+            return f"Closed manually. Opens automatically {when}."
+        return f"Opened manually. Closes automatically {when}."
     return f"Opens automatically {when}." if location.closed else f"Closes to check-ins automatically {when}."
 
 

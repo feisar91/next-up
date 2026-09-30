@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/kiosk-display.css') }}">
 </head>
 <body>
+  {% with message="Connection lost - check-in is paused until it's back" %}{% include "_connection_banner.html" %}{% endwith %}
   <div class="kiosk-screen">
     <div class="kiosk-header">
       <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Barber on George">
@@ -21,6 +22,11 @@
     </div>
     <div class="kiosk-body">
       <div class="kiosk-card">
+        {% if not confirmation %}
+          <div class="kiosk-announcement" id="announcement" {% if not announcement %}hidden{% endif %}>
+            <span id="announcement-text">{{ announcement or "" }}</span>
+          </div>
+        {% endif %}
         {% if confirmation %}
           <div class="kiosk-confirmation">
             <div class="confirm-icon">
@@ -86,6 +92,8 @@
     window.STORE_CLOSED = {{ location.closed | tojson }};
   </script>
   <script src="{{ url_for('static', filename='js/app-version.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/connection-status.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/announcement.js') }}"></script>
   <script src="{{ url_for('static', filename='js/interactions.js') }}"></script>
   <script src="{{ url_for('static', filename='js/kiosk.js') }}"></script>
 </body>

@@ -44,6 +44,11 @@ class Location(db.Model):
     # A barber's manual Open/Close that disagrees with the schedule holds until
     # this time (the next scheduled change, or midnight at the latest).
     manual_until = db.Column(db.DateTime(timezone=True), nullable=True)
+    # A line of text for the TV and kiosk, e.g. "EFTPOS is down - cash only today",
+    # shown until announcement_until (the local midnight after it was set). See
+    # app/announcements.py.
+    announcement = db.Column(db.String(140), nullable=True)
+    announcement_until = db.Column(db.DateTime(timezone=True), nullable=True)
 
     # Bearer secrets for the unattended kiosk tablet / TV display at this
     # location - there's no human to log in on that hardware, so possession

@@ -213,9 +213,20 @@ def test_staff_close_button_holds_against_the_schedule(app, client, barber, loca
         client.post("/staff/launceston/store", data={"closed": "1"})
         html = client.get("/staff/launceston").data.decode()
 
-    assert "Opens automatically Tuesday at 9:00 am." in html
+    assert "Closed manually. Opens automatically Tuesday at 9:00 am." in html
     with app.app_context():
         assert as_utc(_location().manual_until) == monday(17, 30)
+
+
+def test_staff_card_says_a_late_manual_opening_closes_at_midnight(app, client, barber, locations):
+    _set_hours(app)
+    _set_closed(app, True)
+    login(client, barber["username"], barber["password"])
+    with patch("app.opening_hours.utcnow", return_value=monday(20)):
+        client.post("/staff/launceston/store", data={"closed": "0"})
+        html = client.get("/staff/launceston").data.decode()
+    assert "Opened manually. Closes automatically at midnight." in html
+    assert "to check-ins" not in html
 
 
 # --- Screens ---

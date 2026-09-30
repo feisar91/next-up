@@ -11,6 +11,8 @@
   // time, so a tablet with a wrong clock still hides rows on time.
   let recent = [];
 
+  window.watchConnection(socket);
+
   socket.on("connect", function () {
     socket.emit("join", { location: window.LOCATION_SLUG }, function (ack) {
       window.checkAppVersion(ack);
@@ -22,6 +24,34 @@
     renderChair(state.in_progress);
     renderWaiting(state.waiting);
     setRecent(state.recent || []);
+  });
+
+  // "The kiosk isn't connected" on the store card (only there while the store is
+  // open). A kiosk that just dropped off gets offline_in seconds to come back
+  // before the note shows; if it reconnects first, a new status cancels that.
+  const kioskOfflineNote = document.getElementById("kiosk-offline-note");
+  let kioskOfflineTimer = null;
+
+  socket.on("kiosk_status", function (state) {
+    if (!kioskOfflineNote || state.location !== window.LOCATION_SLUG) return;
+    clearTimeout(kioskOfflineTimer);
+    kioskOfflineNote.hidden = !state.offline;
+    if (state.offline_in !== null) {
+      kioskOfflineTimer = setTimeout(function () {
+        kioskOfflineNote.hidden = false;
+      }, state.offline_in * 1000);
+    }
+  });
+
+  // Another barber (or an admin) changed the announcement: show it, unless this
+  // barber is busy typing their own.
+  const announcementInput = document.getElementById("announcement");
+  const announcementClear = document.getElementById("announcement-clear-button");
+
+  socket.on("announcement", function (state) {
+    if (state.location !== window.LOCATION_SLUG) return;
+    if (document.activeElement !== announcementInput) announcementInput.value = state.text || "";
+    announcementClear.hidden = !state.text;
   });
 
   // The store can open or close on its opening hours with nobody tapping the

@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import pytest
 from flask import g
 
@@ -103,9 +105,11 @@ def display_url(app, slug):
 
 @pytest.fixture(autouse=True)
 def reset_device_connections():
-    # The connected-screens registry in app.sockets is process-wide; start each test empty.
+    # The connected-screens registry in app.sockets is process-wide; start each test empty,
+    # and long after startup, so the after-restart grace doesn't hide an offline screen.
     from app import sockets
 
     sockets._device_connections.clear()
+    sockets._process_started_at = sockets.utcnow() - timedelta(days=1)
     yield
     sockets._device_connections.clear()

@@ -52,6 +52,19 @@
   padding: 2.75rem 2.5rem;
 }
 
+/* Shop announcement (app/announcements.py): information, not an error. */
+.kiosk-announcement {
+  margin-bottom: 1.75rem;
+  padding: 0.85rem 1.1rem;
+  background: var(--bog-off-white);
+  border-left: 4px solid var(--bog-red);
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--bog-charcoal);
+}
+
 .kiosk-form {
   width: 100%;
 }
@@ -265,13 +278,20 @@
   justify-content: center;
   gap: 0.65rem;
   padding: 0.75rem 1rem;
+  /* Kiosk and staff pages use viewport-fit=cover: keep clear of a phone's notch. */
+  padding-top: max(0.75rem, env(safe-area-inset-top));
   background: var(--bog-red);
   color: #fff;
+  text-align: center;
   font-family: var(--font-display);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-size: 0.95rem;
   animation: connectionBannerPulse 1.6s ease-in-out infinite;
+}
+
+.connection-banner svg {
+  flex-shrink: 0;
 }
 
 @keyframes connectionBannerPulse {
@@ -310,6 +330,29 @@
   font-size: 2.2rem;
   margin: 0;
   color: var(--bog-off-white);
+}
+
+.display-announcement {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+  padding: 1.1rem 1.5rem;
+  background: rgba(255, 255, 255, 0.07);
+  border-left: 6px solid var(--bog-red);
+  border-radius: 10px;
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.display-announcement[hidden] {
+  display: none;
+}
+
+.display-announcement svg {
+  flex-shrink: 0;
+  color: var(--bog-red);
 }
 
 .display-columns {

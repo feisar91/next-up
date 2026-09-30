@@ -1,3 +1,4 @@
+import math
 import secrets
 import threading
 from collections import Counter
@@ -8,6 +9,7 @@ from flask_login import current_user
 from flask_socketio import join_room
 
 from app import db, socketio
+from app.announcements import current_announcement
 from app.models import Barber, Location, QueueEntry, utcnow
 
 DEVICE_KINDS = ("kiosk", "display")
@@ -24,6 +26,10 @@ RECONNECT_GRACE = timedelta(seconds=60)
 # README); after a restart the screens reconnect within seconds.
 _device_connections = {}
 _device_lock = threading.Lock()
+# Screens connected before a restart are dropped without a disconnect being
+# recorded, so for RECONNECT_GRACE after startup they get the benefit of the doubt
+# while they reconnect, rather than reading as offline.
+_process_started_at = utcnow()
 
 
 def location_room(slug):
@@ -122,6 +128,16 @@ def broadcast_store_status(location):
     socketio.emit("store_status", store_status(location), to=location_room(location.slug))
 
 
+def announcement_state(location):
+    return {"location": location.slug, "text": current_announcement(location)}
+
+
+def broadcast_announcement(location):
+    """The shop announcement for the TV and kiosk (staff see it too, to edit). It's
+    shop-wide notice text, not customer data, so it goes to every screen."""
+    socketio.emit("announcement", announcement_state(location), to=location_room(location.slug))
+
+
 @socketio.on("join")
 def handle_join(data):
     slug = (data or {}).get("location")
@@ -162,6 +178,8 @@ def handle_join(data):
     broadcast_queue(location)
     broadcast_barbers(location)
     broadcast_store_status(location)
+    broadcast_announcement(location)
+    broadcast_kiosk_status(location)
     # Returned as the join acknowledgement: screens compare it with the version
     # they were loaded with and reload after a deploy (app/static/js/app-version.js).
     return {"version": current_app.config["APP_VERSION"]}
@@ -172,6 +190,7 @@ def _mark_seen(location_id, kind):
     if location:
         setattr(location, f"{kind}_last_seen_at", utcnow())
         db.session.commit()
+    return location
 
 
 def _track_device(location, kind):
@@ -185,7 +204,14 @@ def handle_disconnect(*args):
     with _device_lock:
         device = _device_connections.pop(request.sid, None)
     if device:
-        _mark_seen(*device)
+        location = _mark_seen(*device)
+        if location and device[1] == "kiosk":
+            broadcast_kiosk_status(location)
+
+
+def _grace_ends(last_seen):
+    """When a screen last seen at last_seen (timezone-aware) stops counting as online."""
+    return max(last_seen, _process_started_at) + RECONNECT_GRACE
 
 
 def device_status(location):
@@ -205,12 +231,30 @@ def device_status(location):
             state = "online"
         elif last_seen is None:
             state = "never"
-        elif utcnow() - last_seen < RECONNECT_GRACE:
+        elif utcnow() < _grace_ends(last_seen):
             state = "online"
         else:
             state = "offline"
         status[kind] = {"state": state, "count": counts[kind], "last_seen": last_seen}
     return status
+
+
+def kiosk_status(location):
+    """For the staff dashboard's "The kiosk isn't connected" note. A kiosk that has
+    never connected doesn't count: that location may not have one set up.
+    offline_in is the seconds until a kiosk that just dropped off counts as
+    offline unless it reconnects; nothing is sent when that runs out, so the
+    dashboard times it itself (relative, like undo_seconds, so a wrong clock
+    doesn't matter)."""
+    kiosk = device_status(location)["kiosk"]
+    offline_in = None
+    if kiosk["state"] == "online" and not kiosk["count"]:
+        offline_in = max(0, math.ceil((_grace_ends(kiosk["last_seen"]) - utcnow()).total_seconds()))
+    return {"location": location.slug, "offline": kiosk["state"] == "offline", "offline_in": offline_in}
+
+
+def broadcast_kiosk_status(location):
+    socketio.emit("kiosk_status", kiosk_status(location), to=staff_room(location.slug))
 
 
 def disconnect_devices(location, kinds=DEVICE_KINDS):

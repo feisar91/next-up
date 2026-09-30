@@ -7,12 +7,15 @@ today (shop time) that are still waiting or in the chair: waiting ones become
 no-shows, and ones in the chair are marked done - they almost certainly got
 their cut - with completed_at equal to called_at, so metrics count the cut but
 not a made-up time in the chair (QueueEntry.has_chair_time).
+
+The same thread also ends shop announcements at midnight (app/announcements.py).
 """
 import threading
 from collections import defaultdict
 from datetime import datetime, time, timezone
 
 from app import audit, db, socketio
+from app.announcements import clear_expired_announcements
 from app.models import QueueEntry, utcnow
 from app.settings import get_timezone
 
@@ -93,6 +96,11 @@ def _run(app, interval):
                 clear_leftover_entries()
             except Exception:
                 app.logger.exception("Clearing leftover queue entries failed")
+                db.session.rollback()
+            try:
+                clear_expired_announcements()
+            except Exception:
+                app.logger.exception("Clearing expired announcements failed")
                 db.session.rollback()
             finally:
                 db.session.remove()

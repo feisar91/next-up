@@ -13,21 +13,17 @@
 </head>
 <body>
   <div class="display-screen">
-    <div class="connection-banner" id="connection-banner" hidden>
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="1" y1="1" x2="23" y2="23"></line>
-        <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
-        <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
-        <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
-        <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
-        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
-        <line x1="12" y1="20" x2="12.01" y2="20"></line>
-      </svg>
-      <span>Connection lost - reconnecting&hellip;</span>
-    </div>
+    {% with message="Connection lost - reconnecting…" %}{% include "_connection_banner.html" %}{% endwith %}
     <div class="display-header">
       <img src="{{ url_for('static', filename='images/logo-mark.png') }}" alt="Barber on George">
       <h1>{{ location.name }} - Queue</h1>
+    </div>
+    <div class="display-announcement" id="announcement" {% if not announcement %}hidden{% endif %}>
+      <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m3 11 18-5v12L3 14v-3z"></path>
+        <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path>
+      </svg>
+      <span id="announcement-text">{{ announcement or "" }}</span>
     </div>
     <div class="display-columns">
       <div>
@@ -50,6 +46,8 @@
     window.APP_VERSION = "{{ app_version }}";
   </script>
   <script src="{{ url_for('static', filename='js/app-version.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/connection-status.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/announcement.js') }}"></script>
   <script src="{{ url_for('static', filename='js/animated-list.js') }}"></script>
   <script src="{{ url_for('static', filename='js/display.js') }}"></script>
 </body>

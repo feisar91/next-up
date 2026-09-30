@@ -355,6 +355,37 @@ label {
   border-left: 6px solid var(--bog-red);
 }
 
+.announcement-card {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.announcement-card label {
+  color: var(--bog-charcoal);
+}
+
+.announcement-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.announcement-fields input {
+  flex: 1 1 14rem;
+  width: auto;
+}
+
+.announcement-fields [hidden] {
+  display: none;
+}
+
+.kiosk-offline-note {
+  margin-top: 0.35rem;
+  color: var(--bog-red-dark);
+  font-weight: 600;
+}
+
 .staff-actions {
   display: flex;
   flex-wrap: wrap;

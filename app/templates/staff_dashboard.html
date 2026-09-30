@@ -4,6 +4,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/kiosk-display.css') }}">
 {% endblock %}
 {% block content %}
+  {% with message="Connection lost - the queue isn't updating. Reconnecting…" %}{% include "_connection_banner.html" %}{% endwith %}
   <h1>{{ location.name }}</h1>
 
   <div class="card staff-section">
@@ -50,6 +51,10 @@
           <strong>Store is open</strong>
           <div class="meta">Customers can check in on the kiosk.</div>
           {% if schedule_note %}<div class="meta">{{ schedule_note }}</div>{% endif %}
+          {# Kept up to date by staff.js from kiosk_status. #}
+          <div class="kiosk-offline-note" id="kiosk-offline-note" role="status" {% if not kiosk_offline %}hidden{% endif %}>
+            The kiosk isn't connected. Customers can't check in on it until it's back: check the tablet is on and has Wi-Fi.
+          </div>
         </div>
         <div class="staff-actions">
           <form method="post" action="{{ url_for('staff.set_store_status', location_slug=location.slug) }}" data-confirm="Close {{ location.name }} so customers can no longer check in?">
@@ -60,6 +65,26 @@
         </div>
       {% endif %}
     </div>
+  </div>
+
+  <div class="card announcement-card">
+    {% set announcement_url = url_for('staff.set_location_announcement', location_slug=location.slug) %}
+    <form method="post" action="{{ announcement_url }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="announcement"><strong>Announcement</strong></label>
+      <div class="meta">Shown on the TV and kiosk until midnight, e.g. "EFTPOS is down - cash only today".</div>
+      <div class="announcement-fields">
+        <input type="text" id="announcement" name="announcement" maxlength="{{ announcement_max_length }}"
+               value="{{ announcement or '' }}" placeholder="No announcement showing" autocomplete="off">
+        <button type="submit" class="btn">Save</button>
+        {# Submits the form below (forms can't nest), which sends empty text to clear it. #}
+        <button type="submit" class="btn btn-secondary" form="announcement-clear" id="announcement-clear-button" {% if not announcement %}hidden{% endif %}>Clear</button>
+      </div>
+    </form>
+    <form method="post" action="{{ announcement_url }}" id="announcement-clear">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="announcement" value="">
+    </form>
   </div>
 
   <div class="card break-card{% if current_user.on_break %} is-on-break{% endif %}" id="break-card">
@@ -112,6 +137,7 @@
     window.INITIAL_RECENT = {{ state.recent | tojson }};
   </script>
   <script src="{{ url_for('static', filename='js/app-version.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/connection-status.js') }}"></script>
   <script src="{{ url_for('static', filename='js/animated-list.js') }}"></script>
   <script src="{{ url_for('static', filename='js/staff.js') }}"></script>
 {% endblock %}

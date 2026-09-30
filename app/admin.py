@@ -4,6 +4,8 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app import audit, db
+from app.announcements import MAX_LENGTH as ANNOUNCEMENT_MAX_LENGTH
+from app.announcements import current_announcement, set_announcement
 from app.authz import admin_required
 from app.login_sessions import end_all_sessions, logged_in_barbers
 from app.models import Barber, Location, OpeningHours, QueueEntry, SpecialHours
@@ -71,6 +73,8 @@ def overview():
         barbers=barbers,
         logged_in=logged_in_barbers(),
         device_statuses={location.id: device_status(location) for location in active_locations},
+        announcements={location.id: current_announcement(location) for location in active_locations},
+        announcement_max_length=ANNOUNCEMENT_MAX_LENGTH,
         activity=audit.recent(
             ACTIVITY_LOG_LIMIT,
             category=filters["category"],
@@ -367,6 +371,18 @@ def toggle_location_active(location_id):
         ),
         "success",
     )
+    return redirect(url_for("admin.overview", _anchor="locations"))
+
+
+@admin_bp.route("/locations/<int:location_id>/announcement", methods=["POST"])
+@login_required
+@admin_required
+def set_location_announcement(location_id):
+    location = db.get_or_404(Location, location_id)
+    if set_announcement(location, request.form.get("announcement", "")):
+        flash(f"The {location.name} announcement is on its TV and kiosk until midnight.", "success")
+    else:
+        flash(f"The {location.name} announcement has been cleared.", "success")
     return redirect(url_for("admin.overview", _anchor="locations"))
 
 
