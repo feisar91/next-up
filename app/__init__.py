@@ -13,7 +13,10 @@ login_manager = LoginManager()
 login_manager.login_view = "auth.login"
 login_manager.login_message = "Please log in to continue."
 csrf = CSRFProtect()
-socketio = SocketIO(async_mode="threading", path="updates")
+# The server pings every screen every 5s and drops one that hasn't answered within
+# 10s more, so a tablet that loses Wi-Fi or power (and never closes its connection)
+# shows as offline within about 15s. The library default is 25s + 20s.
+socketio = SocketIO(async_mode="threading", path="updates", ping_interval=5, ping_timeout=10)
 
 
 def compute_app_version():

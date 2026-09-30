@@ -52,7 +52,13 @@ def test_kiosk_that_just_dropped_off_gets_the_reconnect_grace(app, locations):
     _connect_kiosk(app).disconnect()
     status = _status(app)
     assert status["offline"] is False
-    assert 55 <= status["offline_in"] <= 60
+    assert 5 <= status["offline_in"] <= 10
+
+
+def test_kiosk_gone_longer_than_the_grace_is_offline(app, locations):
+    _connect_kiosk(app).disconnect()
+    _kiosk_last_seen(app, sockets.RECONNECT_GRACE + timedelta(seconds=1))
+    assert _status(app)["offline"] is True
 
 
 def test_kiosk_gone_for_a_while_is_offline(app, locations):
