@@ -1,20 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Admin - Barber on George{% endblock %}
 {% block container_class %}container-wide{% endblock %}
-{% macro device_status_line(status, what) %}
-  <div class="device-status device-status-{{ status.state }}">
-    {% if status.state == "online" %}
-      Online{% if status.count > 1 %} ({{ status.count }} screens){% endif %}
-    {% elif status.state == "offline" %}
-      Offline since {{ status.last_seen | local_time }}
-    {% else %}
-      Never connected
-    {% endif %}
-  </div>
-  {% if status.count > 1 %}
-    <p class="meta device-status-note">More than one screen is using this {{ what }} link. If that's unexpected, regenerate it.</p>
-  {% endif %}
-{% endmacro %}
+{% from "admin/_device_status.html" import device_status_line %}
 {% block content %}
   <div class="top-bar" style="margin-bottom:1rem;">
     <h1 style="margin:0;">Admin</h1>
@@ -151,7 +138,7 @@
                 <td>{{ location.name }}</td>
                 <td>
                   <div class="device-link">
-                    {{ device_status_line(status.kiosk, "kiosk") }}
+                    <div id="device-status-{{ location.id }}-kiosk">{{ device_status_line(status.kiosk, "kiosk") }}</div>
                     <a href="{{ kiosk_url }}" target="_blank" rel="noopener noreferrer"><code>{{ kiosk_url }}</code></a>
                     <div class="row-actions">
                       <button type="button" class="btn btn-secondary" data-copy="{{ kiosk_url }}">Copy</button>
@@ -164,7 +151,7 @@
                 </td>
                 <td>
                   <div class="device-link">
-                    {{ device_status_line(status.display, "TV display") }}
+                    <div id="device-status-{{ location.id }}-display">{{ device_status_line(status.display, "TV display") }}</div>
                     <a href="{{ display_url }}" target="_blank" rel="noopener noreferrer"><code>{{ display_url }}</code></a>
                     <div class="row-actions">
                       <button type="button" class="btn btn-secondary" data-copy="{{ display_url }}">Copy</button>
@@ -433,4 +420,6 @@
 {% endblock %}
 {% block extra_js %}
   <script src="{{ url_for('static', filename='js/admin-tabs.js') }}"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="{{ url_for('static', filename='js/device-status.js') }}"></script>
 {% endblock %}

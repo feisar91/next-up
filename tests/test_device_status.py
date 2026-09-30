@@ -35,7 +35,12 @@ def test_connected_tv_and_kiosk_show_online(app, locations):
     kiosk = _connect(app, "kiosk")
 
     status = _status(app)
-    assert status["display"] == {"state": "online", "count": 1, "last_seen": status["display"]["last_seen"]}
+    assert status["display"] == {
+        "state": "online",
+        "count": 1,
+        "last_seen": status["display"]["last_seen"],
+        "offline_in": None,
+    }
     assert status["kiosk"]["state"] == "online"
     assert _status(app, "kings-meadows")["display"]["state"] == "never"
 

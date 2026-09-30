@@ -1,0 +1,16 @@
+{# One kiosk or TV connection status line on the admin Device Links tab. Also rendered by
+   device_status_update() in app/sockets.py for live updates, so keep it free of request-only helpers. #}
+{% macro device_status_line(status, what) %}
+  <div class="device-status device-status-{{ status.state }}">
+    {% if status.state == "online" %}
+      Online{% if status.count > 1 %} ({{ status.count }} screens){% endif %}
+    {% elif status.state == "offline" %}
+      Offline since {{ status.last_seen | local_time }}
+    {% else %}
+      Never connected
+    {% endif %}
+  </div>
+  {% if status.count > 1 %}
+    <p class="meta device-status-note">More than one screen is using this {{ what }} link. If that's unexpected, regenerate it.</p>
+  {% endif %}
+{% endmacro %}

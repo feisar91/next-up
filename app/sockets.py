@@ -4,7 +4,7 @@ import threading
 from collections import Counter
 from datetime import timedelta
 
-from flask import current_app, request
+from flask import current_app, get_template_attribute, request
 from flask_login import current_user
 from flask_socketio import join_room
 
@@ -13,13 +13,20 @@ from app.announcements import current_announcement
 from app.models import Barber, Location, QueueEntry, utcnow
 
 DEVICE_KINDS = ("kiosk", "display")
+DEVICE_LABELS = {"kiosk": "kiosk", "display": "TV display"}
+# Admins on the Device Links tab, for live connection status.
+ADMIN_DEVICES_ROOM = "admin-devices"
 # How long after Complete / Remove a barber can undo it, and how many recently
 # finished customers the staff dashboard lists.
 UNDO_WINDOW = timedelta(minutes=10)
 RECENT_LIMIT = 5
 # A screen that dropped off this recently still counts as online: kiosks briefly
-# disconnect on every check-in (the page reloads), and that shouldn't read as "Offline".
-RECONNECT_GRACE = timedelta(seconds=60)
+# disconnect on every check-in (the page reloads, reconnecting within a second or
+# two), and that shouldn't read as "Offline".
+RECONNECT_GRACE = timedelta(seconds=10)
+# After a restart screens reconnect with backoff (retrying up to every 5s while the
+# app was down), so they get longer.
+STARTUP_GRACE = timedelta(seconds=60)
 
 # Socket.IO session id -> (location_id, "kiosk" | "display") for every connected
 # shop screen. In-memory is fine because the app runs as a single process (see
@@ -27,7 +34,7 @@ RECONNECT_GRACE = timedelta(seconds=60)
 _device_connections = {}
 _device_lock = threading.Lock()
 # Screens connected before a restart are dropped without a disconnect being
-# recorded, so for RECONNECT_GRACE after startup they get the benefit of the doubt
+# recorded, so for STARTUP_GRACE after startup they get the benefit of the doubt
 # while they reconnect, rather than reading as offline.
 _process_started_at = utcnow()
 
@@ -197,6 +204,7 @@ def _track_device(location, kind):
     with _device_lock:
         _device_connections[request.sid] = (location.id, kind)
     _mark_seen(location.id, kind)
+    broadcast_device_status(location)
 
 
 @socketio.on("disconnect")
@@ -205,19 +213,25 @@ def handle_disconnect(*args):
         device = _device_connections.pop(request.sid, None)
     if device:
         location = _mark_seen(*device)
-        if location and device[1] == "kiosk":
-            broadcast_kiosk_status(location)
+        if location:
+            broadcast_device_status(location)
+            if device[1] == "kiosk":
+                broadcast_kiosk_status(location)
 
 
 def _grace_ends(last_seen):
     """When a screen last seen at last_seen (timezone-aware) stops counting as online."""
-    return max(last_seen, _process_started_at) + RECONNECT_GRACE
+    return max(last_seen + RECONNECT_GRACE, _process_started_at + STARTUP_GRACE)
 
 
 def device_status(location):
     """{"kiosk": {...}, "display": {...}} for the admin Device Links tab. Each has
-    state "online" / "offline" / "never", the number of screens connected, and
-    last_seen (when it last connected or dropped off)."""
+    state "online" / "offline" / "never", the number of screens connected,
+    last_seen (when it last connected or dropped off), and offline_in: for a screen
+    that's only online because it dropped off moments ago, the seconds until it
+    counts as offline unless it reconnects. Nothing is sent when that runs out, so
+    live pages time it themselves (relative, like undo_seconds, so a wrong clock
+    doesn't matter)."""
     with _device_lock:
         counts = Counter(
             kind for location_id, kind in _device_connections.values() if location_id == location.id
@@ -235,26 +249,49 @@ def device_status(location):
             state = "online"
         else:
             state = "offline"
-        status[kind] = {"state": state, "count": counts[kind], "last_seen": last_seen}
+        offline_in = None
+        if state == "online" and not counts[kind]:
+            offline_in = max(0, math.ceil((_grace_ends(last_seen) - utcnow()).total_seconds()))
+        status[kind] = {"state": state, "count": counts[kind], "last_seen": last_seen, "offline_in": offline_in}
     return status
 
 
 def kiosk_status(location):
     """For the staff dashboard's "The kiosk isn't connected" note. A kiosk that has
-    never connected doesn't count: that location may not have one set up.
-    offline_in is the seconds until a kiosk that just dropped off counts as
-    offline unless it reconnects; nothing is sent when that runs out, so the
-    dashboard times it itself (relative, like undo_seconds, so a wrong clock
-    doesn't matter)."""
+    never connected doesn't count: that location may not have one set up. See
+    device_status for offline_in."""
     kiosk = device_status(location)["kiosk"]
-    offline_in = None
-    if kiosk["state"] == "online" and not kiosk["count"]:
-        offline_in = max(0, math.ceil((_grace_ends(kiosk["last_seen"]) - utcnow()).total_seconds()))
-    return {"location": location.slug, "offline": kiosk["state"] == "offline", "offline_in": offline_in}
+    return {"location": location.slug, "offline": kiosk["state"] == "offline", "offline_in": kiosk["offline_in"]}
 
 
 def broadcast_kiosk_status(location):
     socketio.emit("kiosk_status", kiosk_status(location), to=staff_room(location.slug))
+
+
+def device_status_update(location):
+    """One location's status lines for the admin Device Links tab, rendered from the
+    same macro as the page (so the wording lives in one place), plus offline_in."""
+    render = get_template_attribute("admin/_device_status.html", "device_status_line")
+    status = device_status(location)
+    update = {"location_id": location.id}
+    for kind in DEVICE_KINDS:
+        update[kind] = {"html": str(render(status[kind], DEVICE_LABELS[kind])), "offline_in": status[kind]["offline_in"]}
+    return update
+
+
+def broadcast_device_status(location):
+    socketio.emit("device_status", device_status_update(location), to=ADMIN_DEVICES_ROOM)
+
+
+@socketio.on("watch_devices")
+def handle_watch_devices(*args):
+    """The admin page asking for live connection status: joins the admin room and
+    gets every active location's current status as the acknowledgement. It asks
+    again on reconnect (it may have missed changes) and when a grace runs out."""
+    if not (current_user.is_authenticated and current_user.is_admin):
+        return None
+    join_room(ADMIN_DEVICES_ROOM)
+    return [device_status_update(location) for location in Location.query.filter_by(active=True).order_by(Location.id)]
 
 
 def disconnect_devices(location, kinds=DEVICE_KINDS):
