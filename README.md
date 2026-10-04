@@ -2,7 +2,7 @@
 
 Digital replacement for the paper sign-in pad across Barber on George's locations (Launceston, Kings Meadows, Youngtown):
 
-- **Kiosk** (`/kiosk/<location>/<token>`) - tablet check-in screen. Customer enters their name and optionally a preferred barber.
+- **Kiosk** (`/kiosk/<location>/<token>`) - tablet check-in screen. Customer enters their name and optionally a preferred barber. "Add another person" checks in a group at once (up to 6, e.g. a parent with their kids): they get consecutive places, share the preferred barber, and the confirmation lists everyone's position.
 - **Display** (`/display/<location>/<token>`) - read-only TV screen showing who's in the chair and who's waiting, live. Because the whole shop can read it, customers appear as first name and last initial ("Jordan S."); the staff dashboard shows full names.
 - **Staff** (`/staff/<location>`) - barber login to call the next customer to the chair, mark them complete, or remove a no-show. A Complete or Remove tapped by mistake can be undone from "Recently Finished" for 10 minutes. "Go On Break" takes the barber off the kiosk's preferred-barber list without logging out (they can still call customers), and logging out ends the break. Works on a barber's phone or on the tablet.
 - **Admin** (`/admin`) - admin-only screen to add locations, set their opening hours, add/edit barber logins, and get each location's Kiosk/Display links.
@@ -23,6 +23,8 @@ While a store is open, the staff dashboard's store card says "The kiosk isn't co
 After a deploy, open kiosk, TV and staff dashboard screens reload themselves when their live connection comes back, so nobody has to refresh the shop devices by hand. A kiosk waits until nobody is partway through typing a name, and clears a name left untouched for a minute (someone who walked off), so it's neither shown to the next customer nor holding up the reload.
 
 If a kiosk, TV or staff dashboard loses its live connection for more than a few seconds, a red "Connection lost" banner shows across the top until it reconnects. The kiosk also holds its Check In button while the banner is up, so a customer can't send a check-in that would fail. On the staff dashboard it tells barbers their queue isn't updating.
+
+The kiosk and TV pages ask the browser to keep the screen on (the Screen Wake Lock API), so a tablet or TV browser doesn't dim or lock while the page is open, even if its own sleep setting would. Browsers only allow this over HTTPS, and older ones don't support it, so on those set the device's own sleep timer to never. Staff pages don't do this, so barbers' phones still sleep normally.
 
 Customers still waiting or in the chair from a previous day are cleared a few minutes after midnight (`QUEUE_CLEANUP_CHECK_SECONDS`, default 300): waiting ones are counted as no-shows and ones in the chair as done, without a time in the chair. The Activity tab notes each clear.
 

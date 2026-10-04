@@ -58,7 +58,8 @@ def display_room(slug):
 def queue_state(location, short_names=False):
     waiting = (
         QueueEntry.query.filter_by(location_id=location.id, status=QueueEntry.STATUS_WAITING)
-        .order_by(QueueEntry.checked_in_at.asc())
+        # A group checked in together shares checked_in_at, entered in id order.
+        .order_by(QueueEntry.checked_in_at.asc(), QueueEntry.id.asc())
         .all()
     )
     in_progress = (

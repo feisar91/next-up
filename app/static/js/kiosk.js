@@ -9,8 +9,41 @@
 
   // Don't reload for an update while a customer is partway through checking in.
   function customerIsTyping() {
-    const name = document.querySelector('.kiosk-form input[name="customer_name"]');
-    return Boolean(name && name.value.trim());
+    return Array.from(document.querySelectorAll('.kiosk-form input[name="customer_name"]')).some(function (name) {
+      return name.value.trim();
+    });
+  }
+
+  // "Add another person": a parent checking in their kids too. Each extra row
+  // is another customer_name, and the server gives them consecutive places.
+  const groupPeople = document.getElementById("group-people");
+  const addPerson = document.getElementById("add-person");
+  const personTemplate = document.getElementById("group-person-template");
+
+  function updateAddPerson() {
+    const maxGroupSize = Number(addPerson.dataset.maxGroupSize);
+    addPerson.hidden = groupPeople.children.length + 1 >= maxGroupSize;
+  }
+
+  function removeExtraPeople() {
+    if (!groupPeople) return;
+    groupPeople.replaceChildren();
+    updateAddPerson();
+  }
+
+  if (addPerson) {
+    addPerson.addEventListener("click", function () {
+      const row = personTemplate.content.firstElementChild.cloneNode(true);
+      groupPeople.appendChild(row);
+      row.querySelector("input").focus();
+      updateAddPerson();
+    });
+    groupPeople.addEventListener("click", function (e) {
+      const remove = e.target.closest(".remove-person");
+      if (!remove) return;
+      remove.closest(".group-person").remove();
+      updateAddPerson();
+    });
   }
 
   // Someone who types a name and walks off shouldn't leave it for the next
@@ -23,6 +56,7 @@
 
   function clearAbandonedForm() {
     form.reset(); // empty name, "No preference" selected
+    removeExtraPeople();
     if (skippedStoreClosed !== null && skippedStoreClosed !== window.STORE_CLOSED) {
       window.location.reload();
     }

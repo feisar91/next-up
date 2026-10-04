@@ -250,7 +250,7 @@ def visits_csv(days, tz):
     _, _, window_start = _period(days, tz)
     entries = (
         QueueEntry.query.filter(QueueEntry.checked_in_at >= window_start)
-        .order_by(QueueEntry.checked_in_at.asc())
+        .order_by(QueueEntry.checked_in_at.asc(), QueueEntry.id.asc())
         .all()
     )
 

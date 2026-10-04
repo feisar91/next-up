@@ -35,16 +35,29 @@
                 <path d="M14 27l8 8 16-16"></path>
               </svg>
             </div>
-            <div class="position-label">You're checked in, {{ confirmation.name }}</div>
-            <div class="position">#{{ confirmation.position }}</div>
-            <div class="position-label">in line at {{ location.name }}</div>
-            <p class="confirm-note">Take a seat - we'll call your name shortly.</p>
-            <div class="reset-bar"><div class="reset-bar-fill"></div></div>
+            {% set people = confirmation.people %}
+            {# Longer for a group, so each person can find their place. #}
+            {% set reset_seconds = 6 + 2 * (people | length - 1) %}
+            {% if people | length == 1 %}
+              <div class="position-label">You're checked in, {{ people[0].name }}</div>
+              <div class="position">#{{ people[0].position }}</div>
+              <div class="position-label">in line at {{ location.name }}</div>
+              <p class="confirm-note">Take a seat - we'll call your name shortly.</p>
+            {% else %}
+              <div class="position-label">You're all checked in at {{ location.name }}</div>
+              <ol class="group-positions">
+                {% for person in people %}
+                  <li style="animation-delay: {{ loop.index0 * 120 }}ms"><span class="group-position">#{{ person.position }}</span><span class="group-name">{{ person.name }}</span></li>
+                {% endfor %}
+              </ol>
+              <p class="confirm-note">Take a seat - we'll call each name shortly.</p>
+            {% endif %}
+            <div class="reset-bar"><div class="reset-bar-fill" style="animation-duration: {{ reset_seconds }}s"></div></div>
           </div>
           <script>
             setTimeout(function () {
               window.location.href = "{{ url_for('kiosk.check_in', location_slug=location.slug, token=token) }}";
-            }, 6000);
+            }, {{ reset_seconds * 1000 }});
           </script>
         {% elif location.closed %}
           <div class="kiosk-closed">
@@ -66,6 +79,16 @@
               {# Shared tablet: don't offer earlier customers' names, or "correct" unusual ones. #}
               <input type="text" id="customer_name" name="customer_name" required autofocus placeholder="Enter your name"
                      autocomplete="off" autocorrect="off" spellcheck="false">
+              {# A group checking in together: kiosk.js adds a row per extra person. #}
+              <div class="group-people" id="group-people"></div>
+              <button type="button" class="add-person" id="add-person" data-max-group-size="{{ max_group_size }}">+ Add another person</button>
+              <template id="group-person-template">
+                <div class="group-person">
+                  <input type="text" name="customer_name" placeholder="Their name" aria-label="Another person's name"
+                         autocomplete="off" autocorrect="off" spellcheck="false">
+                  <button type="button" class="remove-person" aria-label="Remove this person">&times;</button>
+                </div>
+              </template>
             </div>
             <div class="field">
               <label>Preferred barber (optional)</label>
@@ -93,6 +116,7 @@
   </script>
   <script src="{{ url_for('static', filename='js/app-version.js') }}"></script>
   <script src="{{ url_for('static', filename='js/connection-status.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/wake-lock.js') }}"></script>
   <script src="{{ url_for('static', filename='js/announcement.js') }}"></script>
   <script src="{{ url_for('static', filename='js/interactions.js') }}"></script>
   <script src="{{ url_for('static', filename='js/kiosk.js') }}"></script>

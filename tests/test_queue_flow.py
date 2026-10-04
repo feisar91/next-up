@@ -1,5 +1,7 @@
 from app import db
+from app.kiosk import MAX_GROUP_SIZE
 from app.models import Location, QueueEntry
+from app.sockets import queue_state
 from tests.conftest import kiosk_url, login
 
 
@@ -48,6 +50,77 @@ def test_checkin_requires_name(app, client, locations):
 
     with app.app_context():
         assert QueueEntry.query.count() == 0
+
+
+def test_group_checkin_adds_everyone_in_consecutive_places(app, client, locations, barber):
+    staff = app.test_client()
+    login(staff, barber["username"], barber["password"])
+    staff.get("/staff/launceston")  # on duty, so the kiosk offers Alex
+    url = kiosk_url(app, "launceston")
+    client.post(url, data={"customer_name": "Already Waiting", "preferred_barber_id": ""})
+
+    resp = client.post(
+        url,
+        data={"customer_name": ["Dana", " ", "Mia", "Leo"], "preferred_barber_id": barber["id"]},
+        follow_redirects=True,
+    )
+
+    html = resp.data.decode()
+    assert "You're all checked in at Launceston" in html
+    rows = [f'"group-position">#{n}</span><span class="group-name">{name}<' for n, name in [(2, "Dana"), (3, "Mia"), (4, "Leo")]]
+    assert all(row in html for row in rows)
+    assert html.index(rows[0]) < html.index(rows[1]) < html.index(rows[2])
+    with app.app_context():
+        waiting = queue_state(db.session.get(Location, locations["launceston"]))["waiting"]
+        assert [e["customer_name"] for e in waiting] == ["Already Waiting", "Dana", "Mia", "Leo"]
+        # The group shares the preferred barber and one check-in time.
+        group = QueueEntry.query.filter(QueueEntry.customer_name.in_(["Dana", "Mia", "Leo"])).all()
+        assert {e.preferred_barber_id for e in group} == {barber["id"]}
+        assert len({e.checked_in_at for e in group}) == 1
+
+
+def test_group_checkin_stays_together_ahead_of_later_customers(app, client, locations):
+    url = kiosk_url(app, "launceston")
+    client.post(url, data={"customer_name": ["Dana", "Mia"], "preferred_barber_id": ""})
+    client.post(url, data={"customer_name": "Later", "preferred_barber_id": ""})
+
+    with app.app_context():
+        waiting = queue_state(db.session.get(Location, locations["launceston"]))["waiting"]
+        assert [e["customer_name"] for e in waiting] == ["Dana", "Mia", "Later"]
+
+
+def test_group_checkin_is_capped(app, client, locations):
+    names = [f"Person {i}" for i in range(MAX_GROUP_SIZE + 3)]
+    client.post(kiosk_url(app, "launceston"), data={"customer_name": names, "preferred_barber_id": ""})
+
+    with app.app_context():
+        assert QueueEntry.query.count() == MAX_GROUP_SIZE
+
+
+def test_group_checkin_with_only_blank_names_adds_nobody(app, client, locations):
+    client.post(kiosk_url(app, "launceston"), data={"customer_name": ["", "  "], "preferred_barber_id": ""})
+
+    with app.app_context():
+        assert QueueEntry.query.count() == 0
+
+
+def test_single_checkin_keeps_the_big_position_number(app, client, locations):
+    resp = client.post(
+        kiosk_url(app, "launceston"), data={"customer_name": ["Jamie", ""], "preferred_barber_id": ""},
+        follow_redirects=True,
+    )
+    assert b"You're checked in, Jamie" in resp.data
+    assert b'<div class="position">#1</div>' in resp.data
+    assert b"group-positions" not in resp.data
+
+
+def test_kiosk_offers_adding_another_person(app, client, locations):
+    html = client.get(kiosk_url(app, "launceston")).data.decode()
+    assert f'id="add-person" data-max-group-size="{MAX_GROUP_SIZE}"' in html
+    template = html[html.index('<template id="group-person-template">'):html.index("</template>")]
+    assert 'name="customer_name"' in template
+    assert 'autocomplete="off"' in template
+    assert 'spellcheck="false"' in template
 
 
 def test_kiosk_name_field_turns_off_browser_suggestions(app, client, locations):

@@ -4,7 +4,7 @@ from flask import Blueprint, abort, redirect, render_template, request, session,
 
 from app import audit, db
 from app.announcements import current_announcement
-from app.models import Location, QueueEntry
+from app.models import Location, QueueEntry, utcnow
 from app.opening_hours import reopens_text
 from app.sockets import broadcast_queue, kiosk_barbers, queue_state
 from app.web_app import manifest_response
@@ -13,6 +13,10 @@ kiosk_bp = Blueprint("kiosk", __name__)
 
 # The "You're checked in" details, carried across the redirect after a check-in.
 CONFIRMATION_SESSION_KEY = "kiosk_confirmation"
+
+# Most people one check-in can add ("Add another person" on the kiosk). The
+# kiosk is public, so this also caps how much of the queue one tap can fill.
+MAX_GROUP_SIZE = 6
 
 
 def _get_authorized_location(location_slug, token):
@@ -41,6 +45,7 @@ def check_in(location_slug, token):
         token=token,
         barbers=barbers,
         confirmation=confirmation,
+        max_group_size=MAX_GROUP_SIZE,
         reopens=reopens_text(location),
         announcement=current_announcement(location),
     )
@@ -64,10 +69,14 @@ def web_app_manifest(location_slug, token):
 
 
 def _check_in(location, barbers):
-    """Add the submitted customer to the queue, unless the store is closed (a
-    kiosk page from before closing can still submit) or no name was given."""
-    customer_name = request.form.get("customer_name", "").strip()
-    if location.closed or not customer_name:
+    """Add the submitted customers to the queue, unless the store is closed (a
+    kiosk page from before closing can still submit) or no name was given.
+
+    A group (a parent with their kids) sends one `customer_name` per person and
+    gets consecutive places, each person a separate entry. They share one
+    preferred barber."""
+    names = [n.strip() for n in request.form.getlist("customer_name") if n.strip()][:MAX_GROUP_SIZE]
+    if location.closed or not names:
         return
 
     # Only accept a barber the kiosk actually offered; anything else (hidden,
@@ -75,18 +84,38 @@ def _check_in(location, barbers):
     preferred_barber_id = request.form.get("preferred_barber_id", "")
     preferred_barber = next((b for b in barbers if str(b.id) == preferred_barber_id), None)
 
-    entry = QueueEntry(
-        location_id=location.id,
-        customer_name=customer_name,
-        preferred_barber_id=preferred_barber.id if preferred_barber else None,
-        status=QueueEntry.STATUS_WAITING,
-    )
-    db.session.add(entry)
+    # One check-in time for the whole group; the queue orders ties by id, so
+    # flush each entry to give them ids in the order the names were entered.
+    checked_in_at = utcnow()
+    entries = []
+    for name in names:
+        entry = QueueEntry(
+            location_id=location.id,
+            customer_name=name,
+            preferred_barber_id=preferred_barber.id if preferred_barber else None,
+            status=QueueEntry.STATUS_WAITING,
+            checked_in_at=checked_in_at,
+        )
+        db.session.add(entry)
+        db.session.flush()
+        entries.append(entry)
     db.session.commit()
 
     broadcast_queue(location)
     detail = f" (prefers {preferred_barber.name})" if preferred_barber else ""
-    audit.record("queue.checkin", f"{customer_name} checked in at {location.name}{detail}")
+    for i, name in enumerate(names):
+        others = names[:i] + names[i + 1 :]
+        with_others = f" with {_join_names(others)}" if others else ""
+        audit.record("queue.checkin", f"{name} checked in at {location.name}{with_others}{detail}")
 
-    position = len(queue_state(location)["waiting"])
-    session[CONFIRMATION_SESSION_KEY] = {"name": customer_name, "position": position}
+    waiting_ids = [e["id"] for e in queue_state(location)["waiting"]]
+    session[CONFIRMATION_SESSION_KEY] = {
+        "people": [{"name": e.customer_name, "position": waiting_ids.index(e.id) + 1} for e in entries]
+    }
+
+
+def _join_names(names):
+    """'Mia', 'Mia and Leo', 'Jamie, Mia and Leo'."""
+    if len(names) == 1:
+        return names[0]
+    return f"{', '.join(names[:-1])} and {names[-1]}"
