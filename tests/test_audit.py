@@ -150,6 +150,17 @@ def test_customer_checkin_is_logged_as_customer(app, client, locations):
         assert entry.actor_id is None
 
 
+def test_group_checkin_logs_each_person_with_the_rest_of_the_group(app, client, locations):
+    client.post(kiosk_url(app, "mainstreet"), data={"customer_name": ["Dana", "Mia", "Leo"], "preferred_barber_id": ""})
+
+    assert sorted(_summaries(app)) == [
+        "Dana checked in at Main Street with Mia and Leo",
+        "Leo checked in at Main Street with Dana and Mia",
+        "Mia checked in at Main Street with Dana and Leo",
+    ]
+    assert {cat for _, cat in _categories(app)} == {"customer"}
+
+
 def test_queue_actions_are_logged_as_barber_events(app, client, barber, locations):
     client.post(kiosk_url(app, "mainstreet"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
     login(client, barber["username"], barber["password"])

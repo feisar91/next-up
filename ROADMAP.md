@@ -15,16 +15,8 @@ Record each on-duty stretch (start, end, location) in its own table instead of o
 
 ## For customers
 
-### Check in a group (small)
-An "add another person" option on the kiosk, so a parent with two kids checks in once and gets consecutive places. Each person stays a separate `QueueEntry`; the confirmation screen lists everyone's position.
-
 ### Text me when I'm nearly up (medium, running costs)
 The customer adds a mobile number at check-in and gets an SMS when they're about two away, so they can step out without losing their spot. Needs an SMS provider (charged per message), and adds personal data to handle: delete numbers once the visit is finished.
-
-## For the shop devices
-
-### Keep the screens awake (small)
-Ask the browser not to dim or lock the kiosk and TV screens (the Screen Wake Lock API, re-requested when the page becomes visible again). Tablets often sleep despite their settings.
 
 ## For the owner
 

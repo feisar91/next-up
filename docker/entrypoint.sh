@@ -15,14 +15,14 @@ fi
 # Wait for Postgres to accept connections before running migrations.
 python - <<'PY'
 import os, sys, time
-import psycopg2
+import psycopg
 
 url = os.environ["DATABASE_URL"]
 for attempt in range(30):
     try:
-        psycopg2.connect(url).close()
+        psycopg.connect(url).close()
         break
-    except psycopg2.OperationalError:
+    except psycopg.OperationalError:
         print("Waiting for database...", flush=True)
         time.sleep(2)
 else:
