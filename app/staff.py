@@ -103,7 +103,7 @@ def choose_location():
 
     if request.method == "POST":
         location = Location.query.filter_by(
-            id=request.form.get("location_id"), active=True
+            id=request.form.get("location_id", type=int), active=True
         ).first()
         if not location:
             abort(404)

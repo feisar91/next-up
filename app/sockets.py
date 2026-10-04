@@ -25,7 +25,7 @@ RECENT_LIMIT = 5
 # two), and that shouldn't read as "Offline".
 RECONNECT_GRACE = timedelta(seconds=10)
 # After a restart screens reconnect with backoff (retrying up to every 5s while the
-# app was down), so they get longer.
+# app was down), so for this long their state is unknown rather than offline.
 STARTUP_GRACE = timedelta(seconds=60)
 
 # Socket.IO session id -> (location_id, "kiosk" | "display") for every connected
@@ -34,8 +34,8 @@ STARTUP_GRACE = timedelta(seconds=60)
 _device_connections = {}
 _device_lock = threading.Lock()
 # Screens connected before a restart are dropped without a disconnect being
-# recorded, so for STARTUP_GRACE after startup they get the benefit of the doubt
-# while they reconnect, rather than reading as offline.
+# recorded, so a last_seen from before startup doesn't say whether the screen was
+# online. Until it reconnects, or STARTUP_GRACE runs out, its state is unknown.
 _process_started_at = utcnow()
 
 
@@ -221,18 +221,21 @@ def handle_disconnect(*args):
 
 
 def _grace_ends(last_seen):
-    """When a screen last seen at last_seen (timezone-aware) stops counting as online."""
-    return max(last_seen + RECONNECT_GRACE, _process_started_at + STARTUP_GRACE)
+    """When a screen last seen at last_seen (timezone-aware), and not connected now,
+    stops counting as online (dropped off since startup) or unknown (before it)."""
+    if last_seen < _process_started_at:
+        return _process_started_at + STARTUP_GRACE
+    return last_seen + RECONNECT_GRACE
 
 
 def device_status(location):
     """{"kiosk": {...}, "display": {...}} for the admin Device Links tab. Each has
-    state "online" / "offline" / "never", the number of screens connected,
-    last_seen (when it last connected or dropped off), and offline_in: for a screen
-    that's only online because it dropped off moments ago, the seconds until it
-    counts as offline unless it reconnects. Nothing is sent when that runs out, so
-    live pages time it themselves (relative, like undo_seconds, so a wrong clock
-    doesn't matter)."""
+    state "online" / "offline" / "unknown" / "never", the number of screens
+    connected, last_seen (when it last connected or dropped off), and offline_in:
+    for a screen that's online only because it dropped off moments ago, or unknown
+    because the app has just started, the seconds until it counts as offline unless
+    it reconnects. Nothing is sent when that runs out, so live pages time it
+    themselves (relative, like undo_seconds, so a wrong clock doesn't matter)."""
     with _device_lock:
         counts = Counter(
             kind for location_id, kind in _device_connections.values() if location_id == location.id
@@ -246,12 +249,14 @@ def device_status(location):
             state = "online"
         elif last_seen is None:
             state = "never"
-        elif utcnow() < _grace_ends(last_seen):
-            state = "online"
-        else:
+        elif utcnow() >= _grace_ends(last_seen):
             state = "offline"
+        elif last_seen < _process_started_at:
+            state = "unknown"
+        else:
+            state = "online"
         offline_in = None
-        if state == "online" and not counts[kind]:
+        if state in ("online", "unknown") and not counts[kind]:
             offline_in = max(0, math.ceil((_grace_ends(last_seen) - utcnow()).total_seconds()))
         status[kind] = {"state": state, "count": counts[kind], "last_seen": last_seen, "offline_in": offline_in}
     return status

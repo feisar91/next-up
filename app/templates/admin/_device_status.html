@@ -6,6 +6,8 @@
       Online{% if status.count > 1 %} ({{ status.count }} screens){% endif %}
     {% elif status.state == "offline" %}
       Offline since {{ status.last_seen | local_time }}
+    {% elif status.state == "unknown" %}
+      Unknown (waiting for the screen to connect)
     {% else %}
       Never connected
     {% endif %}
