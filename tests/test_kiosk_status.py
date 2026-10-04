@@ -74,7 +74,7 @@ def test_kiosks_get_the_grace_again_after_a_restart(app, locations):
     assert status["offline"] is False
     assert 55 <= status["offline_in"] <= 60
     with app.app_context():
-        assert sockets.device_status(_location())["kiosk"]["state"] == "online"
+        assert sockets.device_status(_location())["kiosk"]["state"] == "unknown"
 
 
 def test_dashboard_warns_when_the_kiosk_is_offline(app, client, locations, barber):

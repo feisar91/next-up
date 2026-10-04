@@ -294,7 +294,7 @@ def put_barber_on_duty(barber_id):
     They stay on duty until logged out from here, they log in and out themselves,
     or app/off_duty.py takes them off after the session lifetime with no device."""
     barber = db.get_or_404(Barber, barber_id)
-    location = Location.query.filter_by(id=request.form.get("location_id"), active=True).first()
+    location = Location.query.filter_by(id=request.form.get("location_id", type=int), active=True).first()
 
     if not barber.active:
         flash(f"Activate '{barber.name}' before logging them in.", "error")
