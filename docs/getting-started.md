@@ -33,7 +33,7 @@ TIMEZONE=Europe/London
 SESSION_COOKIE_SECURE=false
 ```
 
-Logins only work over HTTPS by default, which is what you want once the app is online. While you try it out at an address starting with `http://`, set `SESSION_COOKIE_SECURE=false`, or the app won't keep you logged in. Opening it as `http://localhost` on the same computer works either way.
+Logins only work over HTTPS by default, which is what you want once the app is online. While you try it out at an address starting with `http://`, set `SESSION_COOKIE_SECURE=false`, or the app won't keep you logged in. Opening it as `http://localhost` on the same computer usually works either way. If you forget, the setup and login pages show a red warning saying so.
 
 Then start it:
 

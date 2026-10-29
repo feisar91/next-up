@@ -39,7 +39,9 @@ Not from the Admin page. The screens are in English. Because the code is open, s
 
 ### I log in and get sent straight back to the login page
 
-The app only keeps you logged in over HTTPS unless told otherwise. If its address starts with `http://` (not `https://`), add `SESSION_COOKIE_SECURE=false` to `.env` and run `docker compose up -d`. Better still, [set up HTTPS](../guides/server/).
+The app only keeps you logged in over HTTPS unless told otherwise. When that's the problem, the login page shows a red "Logins won't work at this address yet" warning. If the address starts with `http://` (not `https://`), add `SESSION_COOKIE_SECURE=false` to `.env` and run `docker compose up -d`. Better still, [set up HTTPS](../guides/server/).
+
+If the warning says the browser is blocking cookies, allow cookies for the site in the browser's settings.
 
 ### A barber isn't on the kiosk
 

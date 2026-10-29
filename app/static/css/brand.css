@@ -1240,3 +1240,19 @@ label {
   font-weight: 600;
   color: var(--brand-accent-dark);
 }
+
+/* Login and setup pages: why a login won't stick (cookie-check.js). */
+.cookie-warning {
+  text-align: left;
+  line-height: 1.45;
+}
+
+.cookie-warning p {
+  margin: 0.5rem 0 0;
+  font-weight: 400;
+}
+
+.cookie-warning code {
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
