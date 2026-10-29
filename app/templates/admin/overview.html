@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Admin - Next Up{% endblock %}
+{% block title %}Admin - {{ brand.name }}{% endblock %}
 {% block container_class %}container-wide{% endblock %}
 {% from "admin/_device_status.html" import device_status_line %}
 {% block content %}
@@ -8,10 +8,34 @@
     <a href="{{ url_for('metrics.metrics') }}" class="btn btn-secondary">View Metrics</a>
   </div>
 
+  {% if setup_steps %}
+    <div class="card setup-card">
+      <div class="top-bar">
+        <h2 style="margin:0;">Getting Started</h2>
+        <form method="post" action="{{ url_for('admin.hide_setup') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-danger">Hide</button>
+        </form>
+      </div>
+      <ol class="setup-steps" id="setup-steps">
+        {% for step in setup_steps %}
+          <li class="{{ 'is-done' if step.done }}" data-step="{{ step.key }}"
+              {% if step.key == "devices" %}data-kiosk-seen="{{ step.kiosk_seen | lower }}" data-display-seen="{{ step.display_seen | lower }}"{% endif %}>
+            <a href="#{{ step.tab }}">{{ step.label }}</a>
+            <span class="visually-hidden step-done-label"{% if not step.done %} hidden{% endif %}> (done)</span>
+            {% if step.key == "devices" %}<span class="meta setup-step-status" aria-live="polite"></span>{% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+      <p class="setup-all-done" id="setup-all-done" hidden>All set. You can hide this list now.</p>
+    </div>
+  {% endif %}
+
   <div class="tabs" role="tablist">
     <button type="button" class="tab-btn" data-tab="locations" role="tab">Locations</button>
     <button type="button" class="tab-btn" data-tab="device-links" role="tab">Device Links</button>
     <button type="button" class="tab-btn" data-tab="barbers" role="tab">Barbers</button>
+    <button type="button" class="tab-btn" data-tab="branding" role="tab">Branding</button>
     <button type="button" class="tab-btn" data-tab="settings" role="tab">Settings</button>
     <button type="button" class="tab-btn" data-tab="activity" role="tab">Activity</button>
   </div>
@@ -69,8 +93,8 @@
           <input type="text" id="name" name="name" required>
         </div>
         <div class="field">
-          <label for="slug">Slug (used in URLs, e.g. "riverside")</label>
-          <input type="text" id="slug" name="slug" required>
+          <label for="slug">Short name for links (optional, e.g. "main-street")</label>
+          <input type="text" id="slug" name="slug" placeholder="Made from the name if left blank">
         </div>
         <div class="field">
           <label for="address">Address</label>
@@ -321,6 +345,93 @@
     </div>
   </div>
 
+  <div class="tab-panel" data-tab-panel="branding">
+    <div class="card">
+      <h2>Shop Name and Colours</h2>
+      <form method="post" action="{{ url_for('admin.update_branding') }}" id="branding-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field">
+          <label for="brand-name">Shop name</label>
+          <input type="text" id="brand-name" name="name" value="{{ brand.name }}" maxlength="{{ brand_name_max_length }}" required>
+          <p class="meta" style="margin:0.4rem 0 0;">Shown in page titles, on the kiosk when there's no logo, and as the name of the app on home screens.</p>
+        </div>
+        <div class="colour-fields">
+          <div class="field">
+            <label for="brand-dark">Dark colour</label>
+            <input type="color" id="brand-dark" name="dark" value="{{ brand.dark }}">
+            <p class="meta" style="margin:0.4rem 0 0;">Headers, the kiosk and the TV background, and most text. Needs to be dark enough for white writing.</p>
+          </div>
+          <div class="field">
+            <label for="brand-accent">Accent colour</label>
+            <input type="color" id="brand-accent" name="accent" value="{{ brand.accent }}">
+            <p class="meta" style="margin:0.4rem 0 0;">Buttons, highlights and queue numbers. Warnings stay red whatever you pick.</p>
+          </div>
+        </div>
+        <div class="brand-preview" id="brand-preview" aria-hidden="true">
+          <div class="brand-preview-header">
+            <img src="{{ brand.header_image_url }}" alt="">
+            <span class="display-font" id="brand-preview-name">{{ brand.name }}</span>
+          </div>
+          <div class="brand-preview-body">
+            <span class="brand-preview-number">1</span>
+            <span>Jordan S.</span>
+            <span class="brand-preview-button">Call to Chair</span>
+          </div>
+        </div>
+        <div class="row-actions">
+          <button type="submit" class="btn">Save</button>
+          <button type="button" class="btn btn-secondary" data-brand-reset data-dark="{{ branding_defaults.dark }}" data-accent="{{ branding_defaults.accent }}">Use Default Colours</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Logo</h2>
+      <p class="meta">Shown large on the check-in kiosk, and in the staff header and on the TV if you haven't added an icon. It sits on your dark colour, so use a white or light version. A PNG with a transparent background works best. Up to {{ brand_max_upload_mb }} MB.</p>
+      {% if brand.has_logo %}
+        <div class="brand-image-preview"><img src="{{ brand.logo_url }}" alt="Current logo"></div>
+      {% else %}
+        <p class="meta"><strong>No logo yet.</strong> The kiosk shows your shop name instead.</p>
+      {% endif %}
+      <div class="row-actions">
+        <form method="post" action="{{ url_for('admin.upload_brand_image', kind='logo') }}" enctype="multipart/form-data" class="upload-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="file" name="image" accept="image/png,image/jpeg,image/webp" required aria-label="Logo image file">
+          <button type="submit" class="btn">Upload Logo</button>
+        </form>
+        {% if brand.has_logo %}
+          <form method="post" action="{{ url_for('admin.remove_brand_image', kind='logo') }}" data-confirm="Remove the logo? The kiosk will show your shop name instead.">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger">Remove</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Icon</h2>
+      <p class="meta">A small square picture for browser tabs and home-screen icons, and beside the shop name in the staff header and on the TV. Without one, the logo is used (or the built-in mark below, in your colours). A square image works best.</p>
+      <div class="brand-image-preview brand-icon-preview">
+        <img src="{{ brand.icon_url(192) }}" alt="Current home-screen icon" width="96" height="96">
+        <img src="{{ brand.icon_url(32) }}" alt="Current browser-tab icon" width="32" height="32">
+      </div>
+      <div class="row-actions">
+        <form method="post" action="{{ url_for('admin.upload_brand_image', kind='icon') }}" enctype="multipart/form-data" class="upload-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="file" name="image" accept="image/png,image/jpeg,image/webp" required aria-label="Icon image file">
+          <button type="submit" class="btn">Upload Icon</button>
+        </form>
+        {% if brand.has_icon %}
+          <form method="post" action="{{ url_for('admin.remove_brand_image', kind='icon') }}" data-confirm="Remove the icon?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger">Remove</button>
+          </form>
+        {% endif %}
+      </div>
+      <p class="meta">Phones and tablets that already have the app on their home screen may keep the old icon until it's removed and added again.</p>
+    </div>
+  </div>
+
   <div class="tab-panel" data-tab-panel="settings">
     <div class="card">
       <h2>Settings</h2>
@@ -420,6 +531,7 @@
 {% endblock %}
 {% block extra_js %}
   <script src="{{ url_for('static', filename='js/admin-tabs.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/branding.js') }}"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
   <script src="{{ url_for('static', filename='js/device-status.js') }}"></script>
 {% endblock %}

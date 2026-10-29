@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 from app import db
 from app.metrics import compute_metrics
 from app.models import QueueEntry
-from app.settings import DEFAULT_TIMEZONE, get_timezone_name
+from app.settings import get_timezone_name
 from tests.conftest import login
 
 HOBART = ZoneInfo("Australia/Hobart")
@@ -36,9 +36,9 @@ def local_time_on(days_ago, hour, minute=0, tz=HOBART):
 
 def test_all_figures_respect_the_selected_period(app, locations, barber):
     with app.app_context():
-        add_entry(locations["mainstreet"], local_time_on(3, 10), called_by_barber_id=barber["id"])
-        add_entry(locations["mainstreet"], local_time_on(20, 10), called_by_barber_id=barber["id"])
-        add_entry(locations["mainstreet"], local_time_on(20, 11), status=QueueEntry.STATUS_CANCELLED)
+        add_entry(locations["main-street"], local_time_on(3, 10), called_by_barber_id=barber["id"])
+        add_entry(locations["main-street"], local_time_on(20, 10), called_by_barber_id=barber["id"])
+        add_entry(locations["main-street"], local_time_on(20, 11), status=QueueEntry.STATUS_CANCELLED)
 
         last_14 = compute_metrics(14, HOBART)
         assert last_14["total_cuts"] == 1
@@ -56,7 +56,7 @@ def test_days_split_at_local_midnight_not_utc(app, locations, barber):
     with app.app_context():
         # Midnight today in Hobart is still the previous day in UTC.
         checked_in = local_time_on(0, 0, 0)
-        entry = add_entry(locations["mainstreet"], checked_in, wait=10, service=20, called_by_barber_id=barber["id"])
+        entry = add_entry(locations["main-street"], checked_in, wait=10, service=20, called_by_barber_id=barber["id"])
         completed_local = entry.completed_at.astimezone(HOBART)
         if completed_local > datetime.now(HOBART):
             return  # test is running in the first half hour after local midnight
@@ -78,13 +78,13 @@ def test_heatmap_buckets_check_ins_by_local_weekday_and_hour(app, locations):
         # Most recent past Saturday, 10:15 local time.
         today = datetime.now(HOBART).date()
         days_ago = (today.weekday() - 5) % 7 or 7
-        add_entry(locations["mainstreet"], local_time_on(days_ago, 10, 15))
+        add_entry(locations["main-street"], local_time_on(days_ago, 10, 15))
         add_entry(locations["riverside"], local_time_on(days_ago, 14, 5))
 
         data = compute_metrics(14, HOBART)
         assert data["heatmap_hours"][0] == "10am"
         assert data["heatmap_hours"][-1] == "2pm"
-        assert [view["slug"] for view in data["heatmap_views"]] == ["all", "riverside", "mainstreet"]
+        assert [view["slug"] for view in data["heatmap_views"]] == ["all", "main-street", "riverside"]
 
         def cell(view_slug, day, hour_label):
             view = next(v for v in data["heatmap_views"] if v["slug"] == view_slug)
@@ -96,9 +96,9 @@ def test_heatmap_buckets_check_ins_by_local_weekday_and_hour(app, locations):
         assert cell("all", "Sat", "10am")["avg"] == 0.5
         assert cell("all", "Sat", "10am")["step"] == 5
         assert cell("all", "Sat", "2pm")["total"] == 1
-        assert cell("mainstreet", "Sat", "10am")["total"] == 1
-        assert cell("mainstreet", "Sat", "2pm")["total"] == 0
-        assert cell("mainstreet", "Sat", "2pm")["step"] == 0
+        assert cell("main-street", "Sat", "10am")["total"] == 1
+        assert cell("main-street", "Sat", "2pm")["total"] == 0
+        assert cell("main-street", "Sat", "2pm")["step"] == 0
         assert cell("all", "Sun", "10am")["total"] == 0
 
 
@@ -106,11 +106,11 @@ def test_preferred_barber_demand(app, locations, barber, other_location_barber):
     with app.app_context():
         alex, sam = barber["id"], other_location_barber["id"]
         # Two customers ask for Alex: one gets Alex (30 min wait), one gets Sam (10 min wait).
-        add_entry(locations["mainstreet"], local_time_on(1, 10), wait=30, preferred_barber_id=alex, called_by_barber_id=alex)
-        add_entry(locations["mainstreet"], local_time_on(1, 11), wait=10, preferred_barber_id=alex, called_by_barber_id=sam)
+        add_entry(locations["main-street"], local_time_on(1, 10), wait=30, preferred_barber_id=alex, called_by_barber_id=alex)
+        add_entry(locations["main-street"], local_time_on(1, 11), wait=10, preferred_barber_id=alex, called_by_barber_id=sam)
         # Two customers happy with anyone, 5 min waits.
-        add_entry(locations["mainstreet"], local_time_on(1, 12), wait=5, called_by_barber_id=sam)
-        add_entry(locations["mainstreet"], local_time_on(1, 13), wait=5, called_by_barber_id=sam)
+        add_entry(locations["main-street"], local_time_on(1, 12), wait=5, called_by_barber_id=sam)
+        add_entry(locations["main-street"], local_time_on(1, 13), wait=5, called_by_barber_id=sam)
 
         data = compute_metrics(14, HOBART)
         assert data["requested_pct"] == 50
@@ -123,9 +123,9 @@ def test_preferred_barber_demand(app, locations, barber, other_location_barber):
 
 def test_service_time_per_barber(app, locations, barber, other_location_barber):
     with app.app_context():
-        add_entry(locations["mainstreet"], local_time_on(1, 10), service=20, called_by_barber_id=barber["id"])
-        add_entry(locations["mainstreet"], local_time_on(1, 11), service=30, called_by_barber_id=barber["id"])
-        add_entry(locations["mainstreet"], local_time_on(1, 12), service=15, called_by_barber_id=other_location_barber["id"])
+        add_entry(locations["main-street"], local_time_on(1, 10), service=20, called_by_barber_id=barber["id"])
+        add_entry(locations["main-street"], local_time_on(1, 11), service=30, called_by_barber_id=barber["id"])
+        add_entry(locations["main-street"], local_time_on(1, 12), service=15, called_by_barber_id=other_location_barber["id"])
 
         data = compute_metrics(14, HOBART)
         assert data["service_rows"] == [
@@ -136,7 +136,7 @@ def test_service_time_per_barber(app, locations, barber, other_location_barber):
 
 def test_metrics_page_renders_new_sections(app, client, admin_barber, barber, locations):
     with app.app_context():
-        add_entry(locations["mainstreet"], local_time_on(1, 10), preferred_barber_id=barber["id"], called_by_barber_id=barber["id"])
+        add_entry(locations["main-street"], local_time_on(1, 10), preferred_barber_id=barber["id"], called_by_barber_id=barber["id"])
 
     login(client, admin_barber["username"], admin_barber["password"])
     resp = client.get("/admin/metrics")
@@ -150,7 +150,7 @@ def test_metrics_page_renders_new_sections(app, client, admin_barber, barber, lo
 
 def test_timezone_defaults_to_hobart(app):
     with app.app_context():
-        assert get_timezone_name() == DEFAULT_TIMEZONE == "Australia/Hobart"
+        assert get_timezone_name() == app.config["DEFAULT_TIMEZONE"] == "Australia/Hobart"
 
 
 def test_admin_can_change_timezone(app, client, admin_barber):
@@ -170,7 +170,7 @@ def test_invalid_timezone_is_rejected(app, client, admin_barber):
     resp = client.post("/admin/settings", data={"timezone": "Mars/Olympus_Mons"}, follow_redirects=True)
     assert b"Choose a timezone from the list" in resp.data
     with app.app_context():
-        assert get_timezone_name() == DEFAULT_TIMEZONE
+        assert get_timezone_name() == app.config["DEFAULT_TIMEZONE"]
 
 
 def test_settings_require_admin(client, barber):
@@ -196,7 +196,7 @@ def test_visits_export_requires_admin(client, barber):
 def test_visits_export_lists_each_check_in_in_the_period(app, client, admin_barber, barber, locations):
     with app.app_context():
         add_entry(
-            locations["mainstreet"],
+            locations["main-street"],
             local_time_on(2, 10, 15),
             wait=12,
             service=25,
@@ -204,7 +204,7 @@ def test_visits_export_lists_each_check_in_in_the_period(app, client, admin_barb
             preferred_barber_id=barber["id"],
         )
         add_entry(locations["riverside"], local_time_on(1, 14), status=QueueEntry.STATUS_CANCELLED)
-        add_entry(locations["mainstreet"], local_time_on(10, 10))  # outside a 7-day export
+        add_entry(locations["main-street"], local_time_on(10, 10))  # outside a 7-day export
 
     login(client, admin_barber["username"], admin_barber["password"])
     resp = client.get("/admin/metrics/visits.csv?days=7")
@@ -231,7 +231,7 @@ def test_visits_export_lists_each_check_in_in_the_period(app, client, admin_barb
 
 def test_visits_export_neutralises_spreadsheet_formulas(app, client, admin_barber, locations):
     with app.app_context():
-        entry = add_entry(locations["mainstreet"], local_time_on(0, 9), status=QueueEntry.STATUS_WAITING)
+        entry = add_entry(locations["main-street"], local_time_on(0, 9), status=QueueEntry.STATUS_WAITING)
         entry.customer_name = '=HYPERLINK("http://evil.example","Click")'
         db.session.commit()
 

@@ -172,7 +172,7 @@ def test_admin_can_log_a_barber_out_everywhere(app, barber, admin_barber):
     phone, tablet, admin_client = app.test_client(), app.test_client(), app.test_client()
     login(phone, "alex", "password123")
     login(tablet, "alex", "password123")
-    phone.get("/staff/mainstreet")
+    phone.get("/staff/main-street")
     login(admin_client, "morgan", "password123")
 
     admin_client.post(f"/admin/barbers/{barber['id']}/logout")
@@ -221,7 +221,7 @@ def test_logged_out_barber_row_offers_log_in_at_their_default_location(app, barb
     assert f"/admin/barbers/{barber['id']}/login" in row
     assert f"/admin/barbers/{barber['id']}/logout" not in row
     # The location is chosen in a dialog; the form carries their default as the pre-fill.
-    assert f'name="location_id" value="{locations["mainstreet"]}"' in row
+    assert f'name="location_id" value="{locations["main-street"]}"' in row
     assert "<select" not in row
 
 
@@ -261,7 +261,7 @@ def test_admin_cannot_log_in_an_inactive_barber(app, barber, admin_barber, locat
     assert f"/admin/barbers/{barber['id']}/login" not in _barber_row(
         admin_client.get("/admin/").data.decode(), "alex"
     )
-    admin_client.post(f"/admin/barbers/{barber['id']}/login", data={"location_id": locations["mainstreet"]})
+    admin_client.post(f"/admin/barbers/{barber['id']}/login", data={"location_id": locations["main-street"]})
 
     with app.app_context():
         assert db.session.get(Barber, barber["id"]).on_duty_location_id is None
@@ -280,6 +280,6 @@ def test_admin_log_in_requires_admin(app, barber, other_location_barber, locatio
     client = app.test_client()
     login(client, "alex", "password123")
     resp = client.post(
-        f"/admin/barbers/{other_location_barber['id']}/login", data={"location_id": locations["mainstreet"]}
+        f"/admin/barbers/{other_location_barber['id']}/login", data={"location_id": locations["main-street"]}
     )
     assert resp.status_code == 403

@@ -8,6 +8,7 @@ from app.announcements import MAX_LENGTH as ANNOUNCEMENT_MAX_LENGTH
 from app.announcements import current_announcement, set_announcement
 from app.models import MIN_PASSWORD_LENGTH, Location, QueueEntry
 from app.opening_hours import schedule_note, set_store_closed
+from app.branding import get_brand
 from app.web_app import manifest_response
 from app.sockets import (
     UNDO_WINDOW,
@@ -76,8 +77,8 @@ def web_app_manifest():
     """Lets barbers add the staff pages to their home screen (see app/web_app.py)."""
     return manifest_response(
         app_id="/staff",
-        name="Next Up Staff",
-        short_name="Barber App",
+        name=f"{get_brand().name} Staff",
+        short_name=get_brand().name,
         start_url=url_for("staff.landing"),
         scope="/",
         display="standalone",
@@ -93,6 +94,9 @@ def landing():
     location = Location.query.filter_by(id=location_id, active=True).first() if location_id else None
     if location:
         return redirect(url_for("staff.dashboard", location_slug=location.slug))
+    # A new install has no locations yet: send the admin to set the shop up.
+    if current_user.is_admin and not Location.query.filter_by(active=True).first():
+        return redirect(url_for("admin.overview"))
     return redirect(url_for("staff.choose_location"))
 
 

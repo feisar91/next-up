@@ -9,22 +9,22 @@ def assert_keeps_screen_awake(resp):
 
 
 def test_display_keeps_the_screen_awake(app, client, locations):
-    assert_keeps_screen_awake(client.get(display_url(app, "mainstreet")))
+    assert_keeps_screen_awake(client.get(display_url(app, "main-street")))
 
 
 def test_kiosk_keeps_the_screen_awake(app, client, locations):
-    assert_keeps_screen_awake(client.get(kiosk_url(app, "mainstreet")))
+    assert_keeps_screen_awake(client.get(kiosk_url(app, "main-street")))
 
 
 def test_closed_kiosk_still_keeps_the_screen_awake(app, client, locations):
     with app.app_context():
-        Location.query.filter_by(slug="mainstreet").first().closed = True
+        Location.query.filter_by(slug="main-street").first().closed = True
         db.session.commit()
-    assert_keeps_screen_awake(client.get(kiosk_url(app, "mainstreet")))
+    assert_keeps_screen_awake(client.get(kiosk_url(app, "main-street")))
 
 
 def test_staff_dashboard_lets_phones_sleep(app, client, locations, barber):
     login(client, barber["username"], barber["password"])
-    resp = client.get("/staff/mainstreet")
+    resp = client.get("/staff/main-street")
     assert resp.status_code == 200
     assert b"js/wake-lock.js" not in resp.data

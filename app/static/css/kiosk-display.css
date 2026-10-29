@@ -4,17 +4,19 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--brand-off-white);
+  background: var(--color-bg);
 }
 
 .kiosk-header {
-  background: linear-gradient(160deg, var(--brand-charcoal) 0%, #1a1914 100%);
+  background: linear-gradient(160deg, var(--brand-dark) 0%, var(--brand-dark-deep) 100%);
   padding: 2.5rem 1.5rem 2rem;
   text-align: center;
 }
 
 .kiosk-header img {
   height: 52px;
+  max-width: 100%;
+  object-fit: contain;
 }
 
 .kiosk-location-tag {
@@ -23,14 +25,14 @@
   text-transform: uppercase;
   letter-spacing: 0.25em;
   font-size: 0.8rem;
-  color: var(--brand-grey-light);
+  color: var(--color-border);
 }
 
 .kiosk-header-rule {
   width: 56px;
   height: 4px;
   border-radius: 2px;
-  background: var(--brand-red);
+  background: var(--brand-accent);
   margin: 1rem auto 0;
 }
 
@@ -40,7 +42,7 @@
   align-items: center;
   justify-content: center;
   padding: 2.5rem 1.5rem;
-  background: radial-gradient(circle at 50% 0%, #ffffff 0%, var(--brand-off-white) 65%);
+  background: radial-gradient(circle at 50% 0%, #ffffff 0%, var(--color-bg) 65%);
 }
 
 .kiosk-card {
@@ -48,7 +50,7 @@
   max-width: 560px;
   background: #fff;
   border-radius: 20px;
-  box-shadow: 0 24px 55px rgba(40, 39, 33, 0.14);
+  box-shadow: 0 24px 55px rgba(var(--brand-dark-rgb), 0.14);
   padding: 2.75rem 2.5rem;
 }
 
@@ -56,13 +58,13 @@
 .kiosk-announcement {
   margin-bottom: 1.75rem;
   padding: 0.85rem 1.1rem;
-  background: var(--brand-off-white);
-  border-left: 4px solid var(--brand-red);
+  background: var(--color-bg);
+  border-left: 4px solid var(--brand-accent);
   border-radius: 8px;
   font-size: 1.1rem;
   font-weight: 600;
   line-height: 1.4;
-  color: var(--brand-charcoal);
+  color: var(--brand-dark);
 }
 
 .kiosk-form {
@@ -76,7 +78,7 @@
   text-transform: uppercase;
   letter-spacing: 0.2em;
   font-size: 0.85rem;
-  color: var(--brand-red);
+  color: var(--brand-accent);
 }
 
 .kiosk-form h1 {
@@ -89,14 +91,14 @@
   font-size: 1.5rem;
   padding: 1.1rem 1.25rem;
   border-radius: 12px;
-  border: 2px solid var(--brand-grey-light);
+  border: 2px solid var(--color-border);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .kiosk-form input[type="text"]:focus {
   outline: none;
-  border-color: var(--brand-red);
-  box-shadow: 0 0 0 4px rgba(234, 31, 39, 0.12);
+  border-color: var(--brand-accent);
+  box-shadow: 0 0 0 4px rgba(var(--brand-accent-rgb), 0.12);
 }
 
 /* "Add another person": a group checking in together (kiosk.js). */
@@ -125,10 +127,10 @@
   flex: none;
   width: 56px;
   height: 56px;
-  border: 2px solid var(--brand-grey-light);
+  border: 2px solid var(--color-border);
   border-radius: 12px;
   background: #fff;
-  color: var(--brand-grey);
+  color: var(--color-muted);
   font-size: 1.8rem;
   line-height: 1;
   cursor: pointer;
@@ -143,14 +145,14 @@
   width: 100%;
   min-height: 52px;
   margin-top: 0.75rem;
-  border: 2px dashed var(--brand-grey-light);
+  border: 2px dashed var(--color-border);
   border-radius: 12px;
   background: transparent;
   font-family: var(--font-display);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-size: 1rem;
-  color: var(--brand-charcoal);
+  color: var(--brand-dark);
   cursor: pointer;
 }
 
@@ -182,13 +184,13 @@
   justify-content: center;
   min-height: 48px;
   padding: 0.7rem 1.3rem;
-  border: 2px solid var(--brand-grey-light);
+  border: 2px solid var(--color-border);
   border-radius: 999px;
   font-family: var(--font-display);
   text-transform: uppercase;
   font-size: 0.95rem;
   letter-spacing: 0.02em;
-  color: var(--brand-charcoal);
+  color: var(--brand-dark);
   background: #fff;
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
@@ -200,14 +202,14 @@
 }
 
 .barber-chip-input:checked + .barber-chip {
-  background: var(--brand-red);
-  border-color: var(--brand-red);
+  background: var(--brand-accent);
+  border-color: var(--brand-accent);
   color: #fff;
-  box-shadow: 0 6px 16px rgba(234, 31, 39, 0.3);
+  box-shadow: 0 6px 16px rgba(var(--brand-accent-rgb), 0.3);
 }
 
 .barber-chip-input:focus-visible + .barber-chip {
-  outline: 2px solid var(--brand-charcoal);
+  outline: 2px solid var(--brand-dark);
   outline-offset: 2px;
 }
 
@@ -227,7 +229,7 @@
 }
 
 .kiosk-closed .confirm-note {
-  color: var(--brand-grey);
+  color: var(--color-muted);
   margin-top: 1rem;
 }
 
@@ -240,7 +242,7 @@
 
 .confirm-icon circle {
   fill: none;
-  stroke: var(--brand-red);
+  stroke: var(--brand-accent);
   stroke-width: 3;
   stroke-dasharray: 151;
   stroke-dashoffset: 151;
@@ -249,7 +251,7 @@
 
 .confirm-icon path {
   fill: none;
-  stroke: var(--brand-red);
+  stroke: var(--brand-accent);
   stroke-width: 4;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -273,7 +275,7 @@
 .kiosk-confirmation .position {
   font-family: var(--font-display);
   font-size: 6rem;
-  color: var(--brand-red);
+  color: var(--brand-accent);
   line-height: 1;
   margin: 1rem 0;
   animation: positionPopIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
@@ -296,7 +298,7 @@
 .kiosk-confirmation .position-label {
   font-family: var(--font-display);
   text-transform: uppercase;
-  color: var(--brand-grey);
+  color: var(--color-muted);
   letter-spacing: 0.08em;
 }
 
@@ -313,7 +315,7 @@
   align-items: baseline;
   gap: 1rem;
   padding: 0.5rem 0;
-  border-bottom: 1px solid var(--brand-grey-light);
+  border-bottom: 1px solid var(--color-border);
   animation: positionPopIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
@@ -327,7 +329,7 @@
   font-family: var(--font-display);
   font-size: 2.6rem;
   line-height: 1.1;
-  color: var(--brand-red);
+  color: var(--brand-accent);
 }
 
 .group-name {
@@ -337,7 +339,7 @@
 }
 
 .kiosk-confirmation .confirm-note {
-  color: var(--brand-grey);
+  color: var(--color-muted);
   margin-top: 1.75rem;
 }
 
@@ -345,14 +347,14 @@
   margin-top: 2rem;
   height: 6px;
   border-radius: 3px;
-  background: var(--brand-grey-light);
+  background: var(--color-border);
   overflow: hidden;
 }
 
 .reset-bar-fill {
   height: 100%;
   width: 100%;
-  background: var(--brand-red);
+  background: var(--brand-accent);
   animation: resetShrink 6s linear forwards;
 }
 
@@ -379,7 +381,7 @@
   padding: 0.75rem 1rem;
   /* Kiosk and staff pages use viewport-fit=cover: keep clear of a phone's notch. */
   padding-top: max(0.75rem, env(safe-area-inset-top));
-  background: var(--brand-red);
+  background: var(--color-danger-bright);
   color: #fff;
   text-align: center;
   font-family: var(--font-display);
@@ -406,8 +408,8 @@
 
 .display-screen {
   min-height: 100vh;
-  background: var(--brand-charcoal);
-  color: var(--brand-off-white);
+  background: var(--brand-dark);
+  color: var(--color-bg);
   display: flex;
   flex-direction: column;
   padding: 2rem 3rem;
@@ -428,7 +430,7 @@
 .display-screen .display-header h1 {
   font-size: 2.2rem;
   margin: 0;
-  color: var(--brand-off-white);
+  color: var(--color-bg);
 }
 
 .display-announcement {
@@ -438,7 +440,7 @@
   margin-bottom: 2rem;
   padding: 1.1rem 1.5rem;
   background: rgba(255, 255, 255, 0.07);
-  border-left: 6px solid var(--brand-red);
+  border-left: 6px solid var(--brand-accent);
   border-radius: 10px;
   font-size: 1.6rem;
   font-weight: 600;
@@ -451,7 +453,7 @@
 
 .display-announcement svg {
   flex-shrink: 0;
-  color: var(--brand-red);
+  color: var(--brand-accent);
 }
 
 .display-columns {
@@ -464,7 +466,7 @@
 
 .display-columns h2 {
   font-size: 1.6rem;
-  border-bottom: 3px solid var(--brand-red);
+  border-bottom: 3px solid var(--brand-accent);
   padding-bottom: 0.5rem;
   margin-bottom: 1rem;
 }
@@ -481,8 +483,8 @@
 }
 
 .chair-card {
-  background: var(--brand-charcoal-light);
-  border-left: 6px solid var(--brand-red);
+  background: var(--brand-dark-light);
+  border-left: 6px solid var(--brand-accent);
   border-radius: 8px;
   padding: 1rem 1.25rem;
   display: flex;
@@ -493,7 +495,7 @@
 .chair-card .barber-name {
   font-family: var(--font-display);
   font-size: 1.3rem;
-  color: var(--brand-red);
+  color: var(--brand-accent);
 }
 
 .chair-card .customer-name {
@@ -506,7 +508,7 @@
   grid-template-columns: 3rem 1fr auto;
   align-items: baseline;
   gap: 1rem;
-  background: var(--brand-charcoal-light);
+  background: var(--brand-dark-light);
   border-radius: 8px;
   padding: 0.85rem 1.25rem;
 }
@@ -514,7 +516,7 @@
 .waiting-row .queue-number {
   font-family: var(--font-display);
   font-size: 1.8rem;
-  color: var(--brand-red);
+  color: var(--brand-accent);
 }
 
 .waiting-row .customer-name {
@@ -523,14 +525,32 @@
 }
 
 .waiting-row .preferred-barber {
-  color: var(--brand-grey-light);
+  color: var(--color-border);
   font-size: 1rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .empty-state {
-  color: var(--brand-grey-light);
+  color: var(--color-border);
   font-style: italic;
   padding: 1rem 0;
+}
+
+/* Kiosk header with no logo uploaded: the mark and the shop name. */
+.kiosk-header .kiosk-brand-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.9rem;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 2.4rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-bg);
+}
+
+.kiosk-header .kiosk-brand-name img {
+  height: 52px;
 }

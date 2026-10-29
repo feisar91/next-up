@@ -1,19 +1,72 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy.exc import IntegrityError
 
 from app import audit, db
-from app.models import MIN_PASSWORD_LENGTH, Barber
+from app.models import MIN_PASSWORD_LENGTH, Barber, Setting
 from app.login_sessions import end_all_sessions, end_current_session, start_session
 from app.login_throttle import clear_failures, client_ip, lockout_minutes, record_failure
 from app.staff import clear_on_duty
 
 auth_bp = Blueprint("auth", __name__)
 
+# Inserted in the same transaction as the first admin login. Its primary key means
+# only one of two setup forms submitted at the same moment can succeed.
+SETUP_CLAIM_KEY = "first_admin_created"
+
+
+def needs_first_admin():
+    """A brand-new install: nobody can log in until the owner creates the first
+    admin login on /setup (or `flask bootstrap` makes one from ADMIN_PASSWORD)."""
+    return Barber.query.first() is None
+
+
+@auth_bp.route("/setup", methods=["GET", "POST"])
+def setup():
+    """First-run page where the owner picks the admin username and password.
+    Open to whoever gets there first, and only until any login exists."""
+    if not needs_first_admin():
+        return redirect(url_for("auth.login"))
+
+    form = {"name": "", "username": ""}
+    if request.method == "POST":
+        name = " ".join(request.form.get("name", "").split())
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+        form = {"name": name, "username": username}
+
+        if not name or not username:
+            flash("Enter your name and a username.", "error")
+        elif len(password) < MIN_PASSWORD_LENGTH:
+            flash(f"Password must be at least {MIN_PASSWORD_LENGTH} characters.", "error")
+        elif password != confirm_password:
+            flash("Passwords do not match.", "error")
+        else:
+            admin = Barber(name=name, username=username, is_admin=True)
+            admin.set_password(password)
+            db.session.add_all([admin, Setting(key=SETUP_CLAIM_KEY, value=username)])
+            try:
+                db.session.commit()
+            except IntegrityError:
+                # Someone else finished setup a moment earlier.
+                db.session.rollback()
+                flash("Setup has already been completed. Log in instead.", "error")
+                return redirect(url_for("auth.login"))
+            start_session(admin)
+            audit.record("setup.first_admin", f"Created the first admin login, {name} ({username})", actor=admin)
+            flash("Welcome! Your admin login is ready. Let's set up your shop.", "success")
+            return redirect(url_for("admin.overview"))
+
+    return render_template("setup.html", form=form, min_password_length=MIN_PASSWORD_LENGTH)
+
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for("staff.landing"))
+    if needs_first_admin():
+        return redirect(url_for("auth.setup"))
 
     if request.method == "POST":
         username = request.form.get("username", "").strip()

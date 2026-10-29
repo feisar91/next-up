@@ -35,7 +35,11 @@ CATEGORY_LABELS = {
 # Human-readable label for each action code, for the Activity tab's event-type
 # filter and table. Falls back to the raw code for anything not listed here.
 ACTION_LABELS = {
+    "setup.first_admin": "Created first admin login",
     "settings.timezone": "Changed timezone",
+    "settings.branding": "Changed branding",
+    "settings.logo": "Changed logo",
+    "settings.icon": "Changed icon",
     "location.create": "Created location",
     "location.delete": "Deleted location",
     "location.remove": "Removed location",

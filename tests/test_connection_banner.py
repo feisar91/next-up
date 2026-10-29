@@ -14,25 +14,25 @@ def assert_hidden_banner(resp, message):
 
 
 def test_display_page_includes_a_hidden_connection_lost_banner(app, client, locations):
-    assert_hidden_banner(client.get(display_url(app, "mainstreet")), "Connection lost - reconnecting")
+    assert_hidden_banner(client.get(display_url(app, "main-street")), "Connection lost - reconnecting")
 
 
 def test_kiosk_page_includes_a_hidden_connection_lost_banner(app, client, locations):
     assert_hidden_banner(
-        client.get(kiosk_url(app, "mainstreet")), "Connection lost - check-in is paused until it&#39;s back"
+        client.get(kiosk_url(app, "main-street")), "Connection lost - check-in is paused until it&#39;s back"
     )
 
 
 def test_closed_kiosk_still_includes_the_banner(app, client, locations):
     with app.app_context():
-        Location.query.filter_by(slug="mainstreet").first().closed = True
+        Location.query.filter_by(slug="main-street").first().closed = True
         db.session.commit()
-    assert_hidden_banner(client.get(kiosk_url(app, "mainstreet")), "Connection lost")
+    assert_hidden_banner(client.get(kiosk_url(app, "main-street")), "Connection lost")
 
 
 def test_staff_dashboard_includes_a_hidden_connection_lost_banner(app, client, locations, barber):
     login(client, barber["username"], barber["password"])
-    assert_hidden_banner(client.get("/staff/mainstreet"), "the queue isn&#39;t updating")
+    assert_hidden_banner(client.get("/staff/main-street"), "the queue isn&#39;t updating")
 
 
 def test_screens_watch_their_connection():

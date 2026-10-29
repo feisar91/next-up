@@ -60,8 +60,13 @@ def create_app(config_class=Config):
             values.setdefault("v", app.config["APP_VERSION"])
 
     @app.context_processor
-    def inject_app_version():
-        return {"app_version": app.config["APP_VERSION"]}
+    def inject_brand():
+        from app.branding import get_brand, screen_version
+
+        brand = get_brand()
+        # app_version is what long-running screens compare on reconnect (see
+        # app/static/js/app-version.js): code version plus branding version.
+        return {"brand": brand, "app_version": screen_version(brand)}
 
     from app.login_sessions import load_user
 
@@ -73,6 +78,7 @@ def create_app(config_class=Config):
     from app.staff import staff_bp
     from app.admin import admin_bp
     from app.metrics import metrics_bp
+    from app.branding import brand_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(kiosk_bp)
@@ -80,6 +86,7 @@ def create_app(config_class=Config):
     app.register_blueprint(staff_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(metrics_bp)
+    app.register_blueprint(brand_bp)
 
     from app import sockets  # noqa: F401  registers socketio event handlers
     from app.cli import register_cli
@@ -112,6 +119,14 @@ def create_app(config_class=Config):
             return redirect(referrer)
         return redirect(url_for("index"))
 
+    @app.errorhandler(413)
+    def handle_too_large(error):
+        flash("That file is too big to upload.", "error")
+        referrer = request.referrer or ""
+        if referrer.startswith(request.host_url):
+            return redirect(referrer)
+        return redirect(url_for("index"))
+
     @app.template_filter("local_time")
     def local_time(value):
         """Format a UTC timestamp in the shop timezone: '3:05 pm' today, else '24 Sep, 3:05 pm'."""
@@ -133,9 +148,14 @@ def create_app(config_class=Config):
     def index():
         from flask import render_template
 
-        # Same as /login: someone already logged in goes straight to their queue.
+        from app.auth import needs_first_admin
+
+        # Same as /login: someone already logged in goes straight to their queue,
+        # and a brand-new install goes to the first-run setup page.
         if current_user.is_authenticated:
             return redirect(url_for("staff.landing"))
+        if needs_first_admin():
+            return redirect(url_for("auth.setup"))
         return render_template("index.html")
 
     return app

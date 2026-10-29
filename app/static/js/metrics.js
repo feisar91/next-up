@@ -1,8 +1,13 @@
 (function () {
-  const RED = "#ea1f27";
-  const RED_DARK = "#c8181f";
-  const GRID = "#c2c3c1";
-  const INK = "#282721";
+  // The shop's colours, from the CSS variables set by _brand_head.html.
+  const style = getComputedStyle(document.documentElement);
+  function cssColour(name) {
+    return style.getPropertyValue(name).trim();
+  }
+  const ACCENT = cssColour("--brand-accent");
+  const ACCENT_DARK = cssColour("--brand-accent-dark");
+  const GRID = cssColour("--color-border");
+  const INK = cssColour("--brand-dark");
 
   Chart.defaults.font.family = "'Inter Tight', 'Inter', system-ui, sans-serif";
   Chart.defaults.color = INK;
@@ -30,8 +35,8 @@
         datasets: [
           {
             data: data,
-            backgroundColor: RED,
-            hoverBackgroundColor: RED_DARK,
+            backgroundColor: ACCENT,
+            hoverBackgroundColor: ACCENT_DARK,
             borderRadius: horizontal
               ? { topLeft: 0, bottomLeft: 0, topRight: 4, bottomRight: 4 }
               : { topLeft: 4, topRight: 4, bottomLeft: 0, bottomRight: 0 },

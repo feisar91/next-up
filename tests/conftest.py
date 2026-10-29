@@ -38,17 +38,17 @@ def client(app):
 @pytest.fixture()
 def locations(app):
     with app.app_context():
-        mainstreet = Location(name="Main Street", slug="mainstreet")
+        main_street = Location(name="Main Street", slug="main-street")
         riverside = Location(name="Riverside", slug="riverside")
-        db.session.add_all([mainstreet, riverside])
+        db.session.add_all([main_street, riverside])
         db.session.commit()
-        return {"mainstreet": mainstreet.id, "riverside": riverside.id}
+        return {"main-street": main_street.id, "riverside": riverside.id}
 
 
 @pytest.fixture()
 def barber(app, locations):
     with app.app_context():
-        b = Barber(name="Alex", username="alex", default_location_id=locations["mainstreet"])
+        b = Barber(name="Alex", username="alex", default_location_id=locations["main-street"])
         b.set_password("password123")
         db.session.add(b)
         db.session.commit()
@@ -78,7 +78,7 @@ def floating_barber(app, locations):
 @pytest.fixture()
 def admin_barber(app, locations):
     with app.app_context():
-        b = Barber(name="Morgan Admin", username="morgan", default_location_id=locations["mainstreet"], is_admin=True)
+        b = Barber(name="Morgan Admin", username="morgan", default_location_id=locations["main-street"], is_admin=True)
         b.set_password("password123")
         db.session.add(b)
         db.session.commit()

@@ -1,22 +1,44 @@
+import re
 from datetime import date, datetime, time, timedelta, timezone
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from app import audit, db
+from app import audit, branding, db
 from app.announcements import MAX_LENGTH as ANNOUNCEMENT_MAX_LENGTH
 from app.announcements import current_announcement, set_announcement
 from app.authz import admin_required
 from app.login_sessions import end_all_sessions, logged_in_barbers
-from app.models import Barber, Location, OpeningHours, QueueEntry, SpecialHours
+from app.models import Barber, Location, OpeningHours, QueueEntry, Setting, SpecialHours
 from app.opening_hours import WEEKDAY_NAMES, apply_schedule, format_clock
-from app.settings import get_timezone, get_timezone_name, set_timezone_name, timezone_choices
+from app.settings import get_timezone, get_timezone_name, set_timezone_name, timezone_choices, timezone_is_set
 from app.sockets import broadcast_barbers, broadcast_queue, device_status, disconnect_devices
 from app.staff import clear_on_duty, set_on_duty
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 ACTIVITY_LOG_LIMIT = 200
+SETUP_HIDDEN_KEY = "setup_checklist_hidden"
+
+
+def setup_steps(locations, barbers):
+    """The Getting Started checklist for a new install: dicts of key, label, tab
+    and done. The devices step is done once a kiosk and a TV have each connected
+    (at any location); the admin page also ticks it live (device-status.js)."""
+    kiosk_seen = any(location.kiosk_last_seen_at for location in locations)
+    display_seen = any(location.display_last_seen_at for location in locations)
+    steps = [
+        ("branding", "Name your shop and choose its colours and logo", "branding",
+         db.session.get(Setting, branding.KEY_NAME) is not None),
+        ("timezone", "Set your timezone", "settings", timezone_is_set()),
+        ("location", "Add your first location", "locations", any(location.active for location in locations)),
+        ("barbers", "Add a login for each barber", "barbers", len(barbers) > 1),
+        ("devices", "Open the kiosk link on your check-in tablet and the TV link on your TV", "device-links",
+         kiosk_seen and display_seen),
+    ]
+    result = [{"key": key, "label": label, "tab": tab, "done": done} for key, label, tab, done in steps]
+    result[-1].update(kiosk_seen=kiosk_seen, display_seen=display_seen)
+    return result
 
 
 def _activity_filters():
@@ -51,6 +73,11 @@ def _activity_filters():
     }
 
 
+def slugify(text):
+    """Lower-case letters, digits and single dashes, for a location's URLs."""
+    return re.sub(r"[^a-z0-9]+", "-", text.strip().lower()).strip("-")
+
+
 def _parse_date(value):
     try:
         return date.fromisoformat(value) if value else None
@@ -66,8 +93,11 @@ def overview():
     active_locations = [location for location in locations if location.active]
     barbers = Barber.query.order_by(Barber.name).all()
     filters = _activity_filters()
+    steps = setup_steps(locations, barbers)
+    show_setup = not all(step["done"] for step in steps) and db.session.get(Setting, SETUP_HIDDEN_KEY) is None
     return render_template(
         "admin/overview.html",
+        setup_steps=steps if show_setup else None,
         locations=locations,
         active_locations=active_locations,
         barbers=barbers,
@@ -92,7 +122,73 @@ def overview():
         activity_action_label=audit.action_label,
         timezone_name=get_timezone_name(),
         timezone_choices=timezone_choices(),
+        branding_defaults={"dark": branding.DEFAULT_DARK, "accent": branding.DEFAULT_ACCENT},
+        brand_name_max_length=branding.NAME_MAX_LENGTH,
+        brand_max_upload_mb=branding.MAX_UPLOAD_BYTES // (1024 * 1024),
     )
+
+
+@admin_bp.route("/setup/hide", methods=["POST"])
+@login_required
+@admin_required
+def hide_setup():
+    if db.session.get(Setting, SETUP_HIDDEN_KEY) is None:
+        db.session.add(Setting(key=SETUP_HIDDEN_KEY, value="1"))
+        db.session.commit()
+    return redirect(url_for("admin.overview"))
+
+
+@admin_bp.route("/branding", methods=["POST"])
+@login_required
+@admin_required
+def update_branding():
+    try:
+        changes = branding.update_identity(
+            request.form.get("name"), request.form.get("dark"), request.form.get("accent")
+        )
+    except branding.BrandingError as error:
+        flash(str(error), "error")
+    else:
+        if changes:
+            audit.record("settings.branding", branding.change_summary(changes))
+            flash("Branding saved. Open screens will update in a moment.", "success")
+        else:
+            flash("Nothing to change.", "success")
+    return redirect(url_for("admin.overview", _anchor="branding"))
+
+
+@admin_bp.route("/branding/<kind>", methods=["POST"])
+@login_required
+@admin_required
+def upload_brand_image(kind):
+    if kind not in branding.ASSET_LABELS:
+        abort(404)
+    label = branding.ASSET_LABELS[kind]
+    upload = request.files.get("image")
+    if not upload or not upload.filename:
+        flash(f"Choose an image file for the {label}.", "error")
+        return redirect(url_for("admin.overview", _anchor="branding"))
+    try:
+        branding.save_asset(kind, upload.read())
+    except branding.BrandingError as error:
+        flash(str(error), "error")
+    else:
+        audit.record(f"settings.{kind}", f"Uploaded a new {label}")
+        flash(f"New {label} saved. Open screens will update in a moment.", "success")
+    return redirect(url_for("admin.overview", _anchor="branding"))
+
+
+@admin_bp.route("/branding/<kind>/remove", methods=["POST"])
+@login_required
+@admin_required
+def remove_brand_image(kind):
+    if kind not in branding.ASSET_LABELS:
+        abort(404)
+    label = branding.ASSET_LABELS[kind]
+    if branding.remove_asset(kind):
+        audit.record(f"settings.{kind}", f"Removed the {label}")
+        flash(f"The {label} was removed.", "success")
+    return redirect(url_for("admin.overview", _anchor="branding"))
 
 
 @admin_bp.route("/settings", methods=["POST"])
@@ -116,11 +212,12 @@ def update_settings():
 @admin_required
 def create_location():
     name = request.form.get("name", "").strip()
-    slug = request.form.get("slug", "").strip().lower()
+    # The slug is optional: made from the name ("Main Street" -> "main-street").
+    slug = slugify(request.form.get("slug", "") or name)
     address = request.form.get("address", "").strip()
 
     if not name or not slug:
-        flash("Location name and slug are required.", "error")
+        flash("Location name is required.", "error")
     elif Location.query.filter_by(slug=slug).first():
         flash(f"Slug '{slug}' is already in use.", "error")
     else:

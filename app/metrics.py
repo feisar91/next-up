@@ -8,6 +8,7 @@ from flask import Blueprint, Response, render_template, request
 from flask_login import login_required
 
 from app.authz import admin_required
+from app.branding import get_brand
 from app.models import Location, QueueEntry
 from app.settings import get_timezone
 
@@ -307,7 +308,7 @@ def export_visits():
     days = _selected_days()
     tz = get_timezone()
     first_day, last_day, _ = _period(days, tz)
-    filename = f"next-up-visits-{first_day.isoformat()}-to-{last_day.isoformat()}.csv"
+    filename = f"{get_brand().file_slug}-visits-{first_day.isoformat()}-to-{last_day.isoformat()}.csv"
     return Response(
         visits_csv(days, tz),
         mimetype="text/csv",

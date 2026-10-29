@@ -6,12 +6,12 @@ from app.sockets import device_status
 from tests.conftest import login
 
 
-def _location(app, slug="mainstreet"):
+def _location(app, slug="main-street"):
     with app.app_context():
         return Location.query.filter_by(slug=slug).first()
 
 
-def _connect(app, kind, slug="mainstreet"):
+def _connect(app, kind, slug="main-street"):
     location = _location(app, slug)
     token = location.display_token if kind == "display" else location.kiosk_token
     client = socketio.test_client(app, flask_test_client=app.test_client())
@@ -19,7 +19,7 @@ def _connect(app, kind, slug="mainstreet"):
     return client
 
 
-def _status(app, slug="mainstreet"):
+def _status(app, slug="main-street"):
     with app.app_context():
         return device_status(Location.query.filter_by(slug=slug).first())
 
@@ -56,7 +56,7 @@ def test_screen_that_just_dropped_off_still_counts_as_online(app, locations):
 def test_screen_gone_for_a_while_shows_offline_since(app, locations):
     _connect(app, "display").disconnect()
     with app.app_context():
-        location = Location.query.filter_by(slug="mainstreet").first()
+        location = Location.query.filter_by(slug="main-street").first()
         location.display_last_seen_at = utcnow() - timedelta(minutes=5)
         db.session.commit()
 
@@ -68,7 +68,7 @@ def test_screen_gone_for_a_while_shows_offline_since(app, locations):
 def _restart(app, seen_ago):
     """As if the app had just started, with the TV last seen seen_ago before that."""
     with app.app_context():
-        Location.query.filter_by(slug="mainstreet").first().display_last_seen_at = utcnow() - seen_ago
+        Location.query.filter_by(slug="main-street").first().display_last_seen_at = utcnow() - seen_ago
         db.session.commit()
     sockets._process_started_at = utcnow()
 
@@ -121,7 +121,7 @@ def test_staff_dashboards_are_not_counted_as_screens(app, locations, barber):
     staff_client = app.test_client()
     login(staff_client, "alex", "password123")
     sio = socketio.test_client(app, flask_test_client=staff_client)
-    sio.emit("join", {"location": "mainstreet"}, callback=True)
+    sio.emit("join", {"location": "main-street"}, callback=True)
 
     status = _status(app)
     assert status["kiosk"]["state"] == "never" and status["display"]["state"] == "never"
@@ -146,7 +146,7 @@ def test_regenerating_a_link_disconnects_screens_on_the_old_one(app, client, loc
     kiosk = _connect(app, "kiosk")
     login(client, "morgan", "password123")
 
-    client.post(f"/admin/locations/{locations['mainstreet']}/regenerate-display-token")
+    client.post(f"/admin/locations/{locations['main-street']}/regenerate-display-token")
 
     assert not tv.is_connected()
     assert kiosk.is_connected()
@@ -157,6 +157,6 @@ def test_removing_a_location_disconnects_its_screens(app, client, locations, adm
     tv = _connect(app, "display")
     login(client, "morgan", "password123")
 
-    client.post(f"/admin/locations/{locations['mainstreet']}/toggle-active")
+    client.post(f"/admin/locations/{locations['main-street']}/toggle-active")
 
     assert not tv.is_connected()

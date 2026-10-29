@@ -1,0 +1,24 @@
+title: Next Up
+description: Walk-in check-in for barber shops. Customers put their name in on a tablet, the queue shows on the shop TV, and barbers call people up from their phones. Free and open source.
+# The GitHub repository, used for the install commands and links.
+repository: agent-squirrel/next-up
+# Where the site is served from: /<repository name> for GitHub Pages project
+# sites, or "" on a custom domain.
+baseurl: /next-up
+
+permalink: pretty
+markdown: kramdown
+kramdown:
+  input: GFM
+  auto_ids: true
+  hard_wrap: false
+
+exclude:
+  - tools
+  - README.md
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
