@@ -74,10 +74,19 @@ Flask + Flask-SQLAlchemy + Flask-Migrate + PostgreSQL + Flask-SocketIO (threadin
 
 ## Running with Docker
 
-The whole stack - the Flask app (served by Gunicorn) and Postgres - runs via Docker Compose. Requires Docker with the Compose plugin. No configuration is needed for a first run:
+The whole stack - the Flask app (served by Gunicorn) and Postgres - runs via Docker Compose. Requires Docker with the Compose plugin. The app image is published to `ghcr.io/feisar91/next-up` for amd64 and arm64, so installing needs only two files and no build:
 
 ```bash
-docker compose up -d --build
+mkdir next-up && cd next-up
+curl -fsSLO https://github.com/feisar91/next-up/releases/latest/download/docker-compose.yml
+curl -fsSL -o .env https://github.com/feisar91/next-up/releases/latest/download/env.example
+docker compose up -d
+```
+
+To run from a checkout of this repo instead (for working on the code), add the dev override, which builds the image locally:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 ```
 
 The app is then on `http://localhost:8000`. On every start the app container waits for Postgres and runs `flask db upgrade`. A new install has no logins and no locations: open the app in your browser and it asks you to **create the admin login**, choosing your own name, username and password. Until that's done anyone who can reach the app could create it, so do it as soon as the app is up (or set `ADMIN_PASSWORD` in `.env` for an unattended install: an `admin` login is then created with that password, to be changed on first login).
@@ -94,7 +103,7 @@ Useful commands:
 docker compose logs -f app                 # app logs
 docker compose exec app flask <command>    # run any Flask CLI command (e.g. flask set-branding --help)
 docker compose exec app flask reset-admin-password   # locked out? prints a new temporary admin password
-docker compose up -d --build               # rebuild + restart after pulling code changes
+docker compose pull && docker compose up -d   # upgrade to the newest release
 docker compose down                        # stop (data is kept in the checkin_pg_data volume)
 ```
 
@@ -112,9 +121,18 @@ docker compose exec app python -m pytest
 
 Tests run against in-memory SQLite (see `config.TestConfig`), so they don't touch the Postgres data. GitHub Actions runs the same suite on every push and pull request (`.github/workflows/tests.yml`). Any warning during a test run counts as a failure (`pytest.ini`), so deprecations get fixed as they appear.
 
+### Releases
+
+`.github/workflows/publish.yml` runs the tests, then builds the image for amd64 and arm64 and pushes it to GitHub Container Registry:
+
+- every push to `main` publishes `:main` and `:sha-<commit>`,
+- pushing a tag like `v1.2.3` publishes `:1.2.3`, `:1.2`, `:1` and `:latest`, and creates a GitHub release with `docker-compose.yml` and `env.example` attached (the install commands above download those).
+
+To release: `git tag v1.2.3 && git push origin v1.2.3`.
+
 ## Deploying to a VPS
 
-1. Install Docker, clone the repo, optionally create `.env` (see `.env.example` - at least set `POSTGRES_PASSWORD` and `APP_PORT`), and `docker compose up -d --build`. `restart: unless-stopped` keeps both containers running across reboots - no systemd unit needed.
+1. Install Docker, download `docker-compose.yml` and `env.example` as above, set at least `POSTGRES_PASSWORD` and `APP_PORT` in `.env`, and `docker compose up -d`. `restart: unless-stopped` keeps both containers running across reboots - no systemd unit needed.
 2. The container runs Gunicorn with a single worker and multiple threads (`-k gthread -w 1 --threads 8`). Keep it at one worker unless you introduce a message queue (e.g. Redis) for Socket.IO to coordinate broadcasts across multiple worker processes - with a single small VPS serving a handful of shops, one process is plenty.
 3. Login cookies are marked `Secure` (HTTPS only) by default. If you serve the app over plain HTTP, set `SESSION_COOKIE_SECURE=false` in `.env`, or barbers won't be able to stay logged in.
 4. Put **Nginx** (or another reverse proxy handling TLS) in front of the app port, with WebSocket upgrade headers passed through. Consider setting `APP_PORT=127.0.0.1:8000` in `.env` so the app is only reachable through the proxy, and set `BEHIND_PROXY=true` so login rate limiting sees real client IPs.

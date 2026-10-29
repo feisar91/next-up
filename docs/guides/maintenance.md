@@ -40,13 +40,17 @@ docker compose up -d
 ## Upgrading
 
 ```bash
-git pull
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
-The app updates its database by itself as it starts. Kiosks, TVs and barbers' screens that are open reload themselves when they reconnect, so you don't need to touch the devices. It's best done outside opening hours, since the screens drop off for about half a minute while the app restarts.
+`pull` downloads the newest release, and `up -d` restarts the app on it. The app updates its database by itself as it starts. Kiosks, TVs and barbers' screens that are open reload themselves when they reconnect, so you don't need to touch the devices. It's best done outside opening hours, since the screens drop off for about half a minute while the app restarts.
 
-Take a backup before upgrading, in case you need to go back.
+Take a backup before upgrading, in case you need to go back. The [releases page](https://github.com/{{ site.repository }}/releases) lists what changed in each version.
+
+### Staying on one version
+
+By default you get the newest release each time you pull. To choose when to move up, set the version in `.env`, for example `NEXT_UP_VERSION=1.0` to get fixes for 1.0 but nothing bigger, or `NEXT_UP_VERSION=1.0.0` to stay on exactly that one. Change it and run the two commands above when you're ready.
 
 ## Locked out
 

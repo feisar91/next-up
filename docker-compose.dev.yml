@@ -1,0 +1,8 @@
+# For working on Next Up itself: builds the app from this checkout instead of
+# downloading the published image.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+services:
+  app:
+    image: next-up:dev
+    build: .

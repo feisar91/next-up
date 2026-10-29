@@ -15,15 +15,15 @@ Next Up runs in [Docker](https://docs.docker.com/get-docker/). Docker packages t
 
 ## 2. Download and start it
 
-Open a terminal on that machine and run:
+Open a terminal on that machine and download the two files Next Up needs into a new folder:
 
 ```bash
-git clone https://github.com/{{ site.repository }}.git
-cd next-up
-cp .env.example .env
+mkdir next-up && cd next-up
+curl -fsSLO https://github.com/{{ site.repository }}/releases/latest/download/docker-compose.yml
+curl -fsSL -o .env https://github.com/{{ site.repository }}/releases/latest/download/env.example
 ```
 
-Open `.env` in a text editor. Every line in it is optional, but two matter now:
+`docker-compose.yml` tells Docker what to run, and `.env` holds your settings. Open `.env` in a text editor. Every line in it is optional, but two matter now:
 
 ```bash
 # Your shop's timezone, so days and opening hours line up with your clock.
@@ -38,10 +38,10 @@ Logins only work over HTTPS by default, which is what you want once the app is o
 Then start it:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
-The first start takes a few minutes while Docker downloads and builds everything. After that, starts take seconds. Docker restarts the app after a reboot or a crash.
+The first start takes a minute or two while Docker downloads the app and its database. After that, starts take seconds. Docker restarts the app after a reboot or a crash.
 
 Open `http://localhost:8000` in a browser (or the server's address with `:8000` on the end).
 

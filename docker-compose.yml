@@ -1,6 +1,9 @@
+# Next Up: https://github.com/feisar91/next-up
+# Runs the published image. To build from source instead (development), add
+# docker-compose.dev.yml: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 services:
   app:
-    build: .
+    image: ghcr.io/feisar91/next-up:${NEXT_UP_VERSION:-latest}
     restart: unless-stopped
     environment:
       SECRET_KEY: ${SECRET_KEY:-}
