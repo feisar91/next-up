@@ -1,0 +1,18 @@
+# Used by build-media.sh: its own container, volume and network names, so it can
+# run next to an install of Next Up on the same machine. (It deletes its volumes
+# when it finishes, so they must never be the install's.)
+services:
+  app:
+    container_name: nextup-docs-app
+  postgres:
+    container_name: nextup-docs-postgres
+
+volumes:
+  postgres_data:
+    name: nextup-docs-postgres-data
+  app_data:
+    name: nextup-docs-app-data
+
+networks:
+  default:
+    name: nextup-docs
