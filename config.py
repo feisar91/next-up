@@ -11,6 +11,12 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # Timezone used until an admin picks one on the Settings tab (see app/settings.py).
+    DEFAULT_TIMEZONE = os.environ.get("TIMEZONE") or "UTC"
+    # Largest request body accepted, which in practice means the logo/icon upload
+    # (app/branding.py checks its own, smaller limit too).
+    MAX_CONTENT_LENGTH = 8 * 1024 * 1024
+
     # Staff logins end after this long with no activity (see app/login_sessions.py).
     PERMANENT_SESSION_LIFETIME = timedelta(hours=float(os.environ.get("SESSION_LIFETIME_HOURS", 12)))
     # How often to take barbers with no live login off duty once they've been on
@@ -49,6 +55,8 @@ class TestConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get("TEST_DATABASE_URL", "sqlite:///:memory:")
     WTF_CSRF_ENABLED = False
     SESSION_COOKIE_SECURE = False
+    # Tests are written against a zone with daylight saving, to cover the changeovers.
+    DEFAULT_TIMEZONE = "Australia/Hobart"
     # Tests call take_idle_barbers_off_duty() directly instead of a background thread.
     OFF_DUTY_CHECK_SECONDS = 0
     # ...and apply_all_schedules() and clear_leftover_entries() directly too.

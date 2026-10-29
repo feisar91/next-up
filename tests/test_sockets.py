@@ -16,10 +16,10 @@ def _get_tokens(app, slug):
 
 
 def test_join_with_valid_display_token_receives_queue_state(app, client, locations):
-    _, display_token = _get_tokens(app, "launceston")
+    _, display_token = _get_tokens(app, "main-street")
 
     sio_client = socketio.test_client(app, flask_test_client=client)
-    sio_client.emit("join", {"location": "launceston", "token": display_token})
+    sio_client.emit("join", {"location": "main-street", "token": display_token})
     received = sio_client.get_received()
 
     assert any(evt["name"] == "queue_update" for evt in received)
@@ -27,7 +27,7 @@ def test_join_with_valid_display_token_receives_queue_state(app, client, locatio
 
 
 def _check_in(client, app, name):
-    client.post(kiosk_url(app, "launceston"), data={"customer_name": name, "preferred_barber_id": ""})
+    client.post(kiosk_url(app, "main-street"), data={"customer_name": name, "preferred_barber_id": ""})
 
 
 def _queue_updates(received):
@@ -36,10 +36,10 @@ def _queue_updates(received):
 
 def test_display_receives_shortened_customer_names(app, client, locations):
     _check_in(client, app, "Jordan Smith")
-    _, display_token = _get_tokens(app, "launceston")
+    _, display_token = _get_tokens(app, "main-street")
 
     sio_client = socketio.test_client(app, flask_test_client=client)
-    sio_client.emit("join", {"location": "launceston", "token": display_token})
+    sio_client.emit("join", {"location": "main-street", "token": display_token})
     updates = _queue_updates(sio_client.get_received())
 
     assert updates
@@ -49,10 +49,10 @@ def test_display_receives_shortened_customer_names(app, client, locations):
 
 def test_kiosk_does_not_receive_the_queue(app, client, locations):
     _check_in(client, app, "Jordan Smith")
-    kiosk_token, _ = _get_tokens(app, "launceston")
+    kiosk_token, _ = _get_tokens(app, "main-street")
 
     sio_client = socketio.test_client(app, flask_test_client=client)
-    sio_client.emit("join", {"location": "launceston", "token": kiosk_token})
+    sio_client.emit("join", {"location": "main-street", "token": kiosk_token})
     received = sio_client.get_received()
 
     assert _queue_updates(received) == []
@@ -63,7 +63,7 @@ def test_kiosk_does_not_receive_the_queue(app, client, locations):
 def test_staff_queue_state_keeps_full_names(app, client, locations):
     _check_in(client, app, "Jordan Smith")
     with app.app_context():
-        location = Location.query.filter_by(slug="launceston").first()
+        location = Location.query.filter_by(slug="main-street").first()
         assert queue_state(location)["waiting"][0]["customer_name"] == "Jordan Smith"
         assert queue_state(location, short_names=True)["waiting"][0]["customer_name"] == "Jordan S."
 
@@ -87,7 +87,7 @@ def test_shorten_name(full, short):
 
 def test_join_with_wrong_token_gets_nothing(app, client, locations):
     sio_client = socketio.test_client(app, flask_test_client=client)
-    sio_client.emit("join", {"location": "launceston", "token": "not-the-real-token"})
+    sio_client.emit("join", {"location": "main-street", "token": "not-the-real-token"})
     received = sio_client.get_received()
 
     assert received == []
@@ -96,7 +96,7 @@ def test_join_with_wrong_token_gets_nothing(app, client, locations):
 
 def test_join_with_no_token_and_no_session_gets_nothing(app, client, locations):
     sio_client = socketio.test_client(app, flask_test_client=client)
-    sio_client.emit("join", {"location": "launceston"})
+    sio_client.emit("join", {"location": "main-street"})
     received = sio_client.get_received()
 
     assert received == []
@@ -128,18 +128,18 @@ def test_authenticated_staff_can_join_without_a_token(app, locations, barber):
         with patch("app.sockets.join_room") as mock_join_room, patch.object(
             socketio, "emit"
         ) as mock_emit:
-            handle_join({"location": "kings-meadows"})
+            handle_join({"location": "riverside"})
 
         joined = [call.args[0] for call in mock_join_room.call_args_list]
-        assert joined == ["location-kings-meadows", "location-kings-meadows-staff"]
+        assert joined == ["location-riverside", "location-riverside-staff"]
         emitted = [(call.args[0], call.kwargs["to"]) for call in mock_emit.call_args_list]
         assert emitted == [
-            ("queue_update", "location-kings-meadows-staff"),
-            ("queue_update", "location-kings-meadows-display"),
-            ("barbers_update", "location-kings-meadows"),
-            ("store_status", "location-kings-meadows"),
-            ("announcement", "location-kings-meadows"),
-            ("kiosk_status", "location-kings-meadows-staff"),
+            ("queue_update", "location-riverside-staff"),
+            ("queue_update", "location-riverside-display"),
+            ("barbers_update", "location-riverside"),
+            ("store_status", "location-riverside"),
+            ("announcement", "location-riverside"),
+            ("kiosk_status", "location-riverside-staff"),
         ]
 
 
@@ -148,7 +148,7 @@ def test_unauthenticated_request_context_join_gets_nothing(app, locations):
         with patch("app.sockets.join_room") as mock_join_room, patch.object(
             socketio, "emit"
         ) as mock_emit:
-            handle_join({"location": "kings-meadows"})
+            handle_join({"location": "riverside"})
 
         mock_join_room.assert_not_called()
         mock_emit.assert_not_called()

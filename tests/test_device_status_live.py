@@ -10,11 +10,11 @@ from app.sockets import ADMIN_DEVICES_ROOM, device_status_update, handle_watch_d
 from tests.conftest import login
 
 
-def _location(slug="launceston"):
+def _location(slug="main-street"):
     return Location.query.filter_by(slug=slug).first()
 
 
-def _connect(app, kind, slug="launceston"):
+def _connect(app, kind, slug="main-street"):
     with app.app_context():
         location = _location(slug)
         token = location.display_token if kind == "display" else location.kiosk_token
@@ -61,7 +61,7 @@ def test_screens_connecting_and_dropping_off_are_pushed_to_admins(app, locations
 
     (joined_room, joined), (dropped_room, dropped) = _device_updates(mock_emit)
     assert joined_room == dropped_room == ADMIN_DEVICES_ROOM
-    assert joined["location_id"] == locations["launceston"]
+    assert joined["location_id"] == locations["main-street"]
     assert "Online" in joined["display"]["html"] and joined["display"]["offline_in"] is None
     assert "Never connected" in joined["kiosk"]["html"]
     # Still online during the reconnect grace, with how long until it isn't.
@@ -83,7 +83,7 @@ def test_status_after_the_grace_reads_offline(app, locations):
 def test_device_links_tab_has_live_slots(app, client, locations, admin_barber):
     login(client, admin_barber["username"], admin_barber["password"])
     html = client.get("/admin/").data.decode()
-    launceston = locations["launceston"]
-    assert f'id="device-status-{launceston}-kiosk"' in html
-    assert f'id="device-status-{launceston}-display"' in html
+    main_street = locations["main-street"]
+    assert f'id="device-status-{main_street}-kiosk"' in html
+    assert f'id="device-status-{main_street}-display"' in html
     assert "js/device-status.js" in html

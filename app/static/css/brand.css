@@ -1,11 +1,23 @@
 :root {
-  --bog-charcoal: #282721;
-  --bog-charcoal-light: #3a3930;
-  --bog-red: #ea1f27;
-  --bog-red-dark: #c8181f;
-  --bog-off-white: #f6f7f7;
-  --bog-grey: #5b5a56;
-  --bog-grey-light: #c2c3c1;
+  /* Brand colours. These are the "Next Up" defaults; _brand_head.html overrides
+     them with the shop's own (Admin > Branding, see app/branding.py). */
+  --brand-dark: #1f2933;
+  --brand-dark-light: #353e47;
+  --brand-dark-deep: #141b21;
+  --brand-dark-rgb: 31, 41, 51;
+  --brand-accent: #0d9488;
+  --brand-accent-dark: #0b7e74;
+  --brand-accent-deep: #09685f;
+  --brand-accent-rgb: 13, 148, 136;
+
+  /* Fixed colours, the same for every shop. Warnings and errors stay red
+     whatever the brand colours are. */
+  --color-bg: #f6f7f7;
+  --color-muted: #5b5a56;
+  --color-border: #c2c3c1;
+  --color-danger: #c8181f;
+  --color-danger-bright: #ea1f27;
+  --color-danger-soft: #fde5e6;
 
   --font-display: "Oswald", "Arial Narrow", sans-serif;
   --font-body: "Inter Tight", "Inter", system-ui, sans-serif;
@@ -27,8 +39,8 @@ body {
 }
 
 body {
-  background: var(--bog-off-white);
-  color: var(--bog-charcoal);
+  background: var(--color-bg);
+  color: var(--brand-dark);
   font-family: var(--font-body);
 }
 
@@ -42,12 +54,12 @@ h3,
 }
 
 a {
-  color: var(--bog-red);
+  color: var(--brand-accent);
 }
 
 .site-header {
-  background: var(--bog-charcoal);
-  color: var(--bog-off-white);
+  background: var(--brand-dark);
+  color: var(--color-bg);
   padding: 1rem 1.5rem;
   display: flex;
   align-items: center;
@@ -56,6 +68,8 @@ a {
 
 .site-header img {
   height: 32px;
+  max-width: 40vw;
+  object-fit: contain;
   display: block;
 }
 
@@ -76,11 +90,11 @@ a {
 
 .card {
   background: #fff;
-  border: 1px solid var(--bog-grey-light);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
-  box-shadow: 0 1px 3px rgba(40, 39, 33, 0.06);
+  box-shadow: 0 1px 3px rgba(var(--brand-dark-rgb), 0.06);
   transition: box-shadow 0.2s ease;
 }
 
@@ -93,7 +107,7 @@ a {
   font-family: var(--font-display);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  background: var(--bog-red);
+  background: var(--brand-accent);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -101,41 +115,41 @@ a {
   font-size: 1.1rem;
   cursor: pointer;
   text-decoration: none;
-  box-shadow: 0 1px 2px rgba(40, 39, 33, 0.15);
+  box-shadow: 0 1px 2px rgba(var(--brand-dark-rgb), 0.15);
   transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease,
     opacity 0.15s ease;
 }
 
 .btn:hover {
-  background: var(--bog-red-dark);
-  box-shadow: 0 4px 12px rgba(40, 39, 33, 0.18);
+  background: var(--brand-accent-dark);
+  box-shadow: 0 4px 12px rgba(var(--brand-dark-rgb), 0.18);
   transform: translateY(-1px);
 }
 
 .btn:active {
   transform: translateY(0) scale(0.97);
-  box-shadow: 0 1px 2px rgba(40, 39, 33, 0.15);
+  box-shadow: 0 1px 2px rgba(var(--brand-dark-rgb), 0.15);
 }
 
 .btn-secondary {
-  background: var(--bog-charcoal);
+  background: var(--brand-dark);
 }
 
 .btn-secondary:hover {
-  background: var(--bog-charcoal-light);
+  background: var(--brand-dark-light);
 }
 
 .btn-danger {
   background: transparent;
-  color: var(--bog-grey);
-  border: 1px solid var(--bog-grey-light);
+  color: var(--color-muted);
+  border: 1px solid var(--color-border);
   box-shadow: none;
 }
 
 .btn-danger:hover {
-  background: #fde5e6;
-  color: var(--bog-red-dark);
-  border-color: var(--bog-red);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  border-color: var(--color-danger-bright);
   box-shadow: none;
   transform: translateY(-1px);
 }
@@ -170,18 +184,18 @@ select {
   width: 100%;
   font-size: 1.1rem;
   padding: 0.75rem;
-  border: 1px solid var(--bog-grey-light);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   font-family: var(--font-body);
   background: #fff;
-  color: var(--bog-charcoal);
+  color: var(--brand-dark);
 }
 
 label {
   display: block;
   font-weight: 600;
   margin-bottom: 0.4rem;
-  color: var(--bog-grey);
+  color: var(--color-muted);
 }
 
 .field {
@@ -196,8 +210,8 @@ label {
 }
 
 .flash-error {
-  background: #fde5e6;
-  color: var(--bog-red-dark);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
 }
 
 .flash-success {
@@ -236,12 +250,12 @@ label {
 }
 
 .nav-user {
-  color: var(--bog-grey-light);
+  color: var(--color-border);
 }
 
 .top-bar a,
 .nav-button {
-  color: var(--bog-off-white);
+  color: var(--color-bg);
   text-decoration: none;
   font-family: var(--font-display);
   text-transform: uppercase;
@@ -250,7 +264,7 @@ label {
 }
 
 .nav-links a[aria-current="page"] {
-  box-shadow: inset 0 -2px 0 var(--bog-red);
+  box-shadow: inset 0 -2px 0 var(--brand-accent);
 }
 
 /* Log out is a POST (CSRF-protected), so it's a button styled as a nav link. */
@@ -291,7 +305,7 @@ label {
 /* --- Staff dashboard rows --- */
 
 .staff-section h2 {
-  border-bottom: 3px solid var(--bog-red);
+  border-bottom: 3px solid var(--brand-accent);
   padding-bottom: 0.5rem;
 }
 
@@ -302,7 +316,7 @@ label {
   align-items: center;
   gap: 0.75rem 1rem;
   padding: 0.9rem 0;
-  border-bottom: 1px solid var(--bog-grey-light);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .staff-row:last-child {
@@ -310,7 +324,7 @@ label {
 }
 
 .staff-row .meta {
-  color: var(--bog-grey);
+  color: var(--color-muted);
   font-size: 0.9rem;
 }
 
@@ -320,20 +334,20 @@ label {
 
 .staff-row .queue-number {
   font-family: var(--font-display);
-  color: var(--bog-red);
+  color: var(--brand-accent);
 }
 
 /* A waiting customer who asked for the barber viewing the page. */
 .staff-row.is-mine {
-  background: var(--bog-off-white);
-  box-shadow: inset 4px 0 0 var(--bog-red);
+  background: var(--color-bg);
+  box-shadow: inset 4px 0 0 var(--brand-accent);
   padding-left: 0.9rem;
   padding-right: 0.5rem;
   border-radius: 6px;
 }
 
 .staff-row.is-mine .meta {
-  color: var(--bog-red-dark);
+  color: var(--brand-accent-dark);
   font-weight: 600;
 }
 
@@ -343,7 +357,7 @@ label {
 }
 
 .break-card.is-on-break {
-  border-left: 6px solid var(--bog-red);
+  border-left: 6px solid var(--brand-accent);
 }
 
 .store-card {
@@ -352,7 +366,7 @@ label {
 }
 
 .store-card.is-closed {
-  border-left: 6px solid var(--bog-red);
+  border-left: 6px solid var(--color-danger-bright);
 }
 
 .announcement-card {
@@ -361,7 +375,7 @@ label {
 }
 
 .announcement-card label {
-  color: var(--bog-charcoal);
+  color: var(--brand-dark);
 }
 
 .announcement-fields {
@@ -382,7 +396,7 @@ label {
 
 .kiosk-offline-note {
   margin-top: 0.35rem;
-  color: var(--bog-red-dark);
+  color: var(--color-danger);
   font-weight: 600;
 }
 
@@ -417,7 +431,7 @@ label {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(40, 39, 33, 0.55);
+  background: rgba(var(--brand-dark-rgb), 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -439,7 +453,7 @@ label {
   padding: 1.75rem;
   max-width: 360px;
   width: 100%;
-  box-shadow: 0 20px 50px rgba(40, 39, 33, 0.35);
+  box-shadow: 0 20px 50px rgba(var(--brand-dark-rgb), 0.35);
   transform: scale(0.92) translateY(8px);
   transition: transform 0.2s ease;
 }
@@ -451,7 +465,7 @@ label {
 .modal-message {
   margin: 0 0 1.5rem;
   font-size: 1.05rem;
-  color: var(--bog-charcoal);
+  color: var(--brand-dark);
 }
 
 .modal-actions {
@@ -512,18 +526,18 @@ label {
 .admin-table th {
   text-align: left;
   padding: 0.6rem 0.75rem;
-  border-bottom: 2px solid var(--bog-grey-light);
+  border-bottom: 2px solid var(--color-border);
   font-family: var(--font-display);
   text-transform: uppercase;
   font-size: 0.78rem;
   letter-spacing: 0.03em;
-  color: var(--bog-grey);
+  color: var(--color-muted);
   white-space: nowrap;
 }
 
 .admin-table td {
   padding: 0.65rem 0.75rem;
-  border-bottom: 1px solid var(--bog-grey-light);
+  border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
 }
 
@@ -541,7 +555,7 @@ label {
 }
 
 .admin-table tbody tr:hover {
-  background: var(--bog-off-white);
+  background: var(--color-bg);
 }
 
 .row-actions {
@@ -571,7 +585,7 @@ label {
   width: 44px;
   height: 24px;
   border-radius: 12px;
-  background: var(--bog-grey-light);
+  background: var(--color-border);
   transition: background-color 0.15s ease;
 }
 
@@ -583,12 +597,12 @@ label {
   height: 18px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 1px 2px rgba(40, 39, 33, 0.3);
+  box-shadow: 0 1px 2px rgba(var(--brand-dark-rgb), 0.3);
   transition: transform 0.15s ease;
 }
 
 .switch[aria-checked="true"] .switch-track {
-  background: var(--bog-red);
+  background: var(--brand-accent);
 }
 
 .switch[aria-checked="true"] .switch-thumb {
@@ -596,7 +610,7 @@ label {
 }
 
 .switch:focus-visible .switch-track {
-  outline: 2px solid var(--bog-charcoal);
+  outline: 2px solid var(--brand-dark);
   outline-offset: 2px;
 }
 
@@ -619,8 +633,8 @@ label {
   flex-wrap: wrap;
   padding: 1rem 1.25rem;
   margin-bottom: 1.5rem;
-  background: var(--bog-off-white);
-  border: 1px solid var(--bog-grey-light);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
 }
 
@@ -687,10 +701,10 @@ label {
 
 .stat-tile {
   background: #fff;
-  border: 1px solid var(--bog-grey-light);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 1.25rem;
-  box-shadow: 0 1px 3px rgba(40, 39, 33, 0.06);
+  box-shadow: 0 1px 3px rgba(var(--brand-dark-rgb), 0.06);
 }
 
 .stat-tile .stat-label {
@@ -698,20 +712,20 @@ label {
   text-transform: uppercase;
   font-size: 0.78rem;
   letter-spacing: 0.03em;
-  color: var(--bog-grey);
+  color: var(--color-muted);
   margin: 0 0 0.4rem;
 }
 
 .stat-tile .stat-value {
   font-family: var(--font-display);
   font-size: 2.2rem;
-  color: var(--bog-charcoal);
+  color: var(--brand-dark);
   line-height: 1;
 }
 
 .stat-tile .stat-value .stat-unit {
   font-size: 1rem;
-  color: var(--bog-grey);
+  color: var(--color-muted);
   text-transform: none;
   letter-spacing: 0;
   margin-left: 0.25rem;
@@ -734,7 +748,7 @@ label {
 }
 
 .chart-empty {
-  color: var(--bog-grey);
+  color: var(--color-muted);
   font-style: italic;
   padding: 2rem 0;
   text-align: center;
@@ -764,7 +778,7 @@ label {
 
 .chart-subtitle,
 .metrics-note {
-  color: var(--bog-grey);
+  color: var(--color-muted);
   font-size: 0.9rem;
 }
 
@@ -791,11 +805,11 @@ label {
 
 /* Busiest-times heatmap: one hue (brand red), light -> dark = quiet -> busy. */
 .heat-0 { background: #efefed; }
-.heat-1 { background: #fce0e1; }
-.heat-2 { background: #f7aeb1; }
-.heat-3 { background: #f06d72; }
-.heat-4 { background: #ea1f27; }
-.heat-5 { background: #b3151c; }
+.heat-1 { background: rgba(var(--brand-accent-rgb), 0.14); }
+.heat-2 { background: rgba(var(--brand-accent-rgb), 0.38); }
+.heat-3 { background: rgba(var(--brand-accent-rgb), 0.68); }
+.heat-4 { background: var(--brand-accent); }
+.heat-5 { background: var(--brand-accent-deep); }
 
 .heatmap-scroll {
   overflow-x: auto;
@@ -811,7 +825,7 @@ label {
   font-family: var(--font-body);
   font-weight: 500;
   font-size: 0.75rem;
-  color: var(--bog-grey);
+  color: var(--color-muted);
   white-space: nowrap;
 }
 
@@ -834,7 +848,7 @@ label {
 
 .heatmap td:hover,
 .heatmap td:focus-visible {
-  outline: 2px solid var(--bog-charcoal);
+  outline: 2px solid var(--brand-dark);
   outline-offset: 1px;
 }
 
@@ -845,7 +859,7 @@ label {
   gap: 0.35rem;
   margin-top: 0.75rem;
   font-size: 0.8rem;
-  color: var(--bog-grey);
+  color: var(--color-muted);
 }
 
 .heat-swatch {
@@ -863,7 +877,7 @@ label {
   position: fixed;
   z-index: 50;
   pointer-events: none;
-  background: var(--bog-charcoal);
+  background: var(--brand-dark);
   color: #fff;
   padding: 0.5rem 0.65rem;
   border-radius: 6px;
@@ -897,7 +911,7 @@ label {
   gap: 0.4rem;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--bog-grey);
+  color: var(--color-muted);
 }
 
 .device-status::before {
@@ -905,7 +919,7 @@ label {
   width: 0.55rem;
   height: 0.55rem;
   border-radius: 50%;
-  background: var(--bog-grey-light);
+  background: var(--color-border);
   flex-shrink: 0;
 }
 
@@ -918,16 +932,16 @@ label {
 }
 
 .device-status-offline {
-  color: var(--bog-red-dark);
+  color: var(--color-danger);
 }
 
 .device-status-offline::before {
-  background: var(--bog-red);
+  background: var(--color-danger-bright);
 }
 
 .device-status-unknown::before {
   background: transparent;
-  border: 2px solid var(--bog-grey-light);
+  border: 2px solid var(--color-border);
   box-sizing: border-box;
 }
 
@@ -938,11 +952,11 @@ label {
 
 .device-link code {
   font-size: 0.78rem;
-  background: var(--bog-off-white);
+  background: var(--color-bg);
   padding: 0.5rem 0.65rem;
   border-radius: 6px;
   word-break: break-all;
-  color: var(--bog-charcoal);
+  color: var(--brand-dark);
   display: block;
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -950,7 +964,7 @@ label {
 .device-link a:hover code,
 .device-link a:focus-visible code {
   background: #fff;
-  box-shadow: 0 0 0 2px var(--bog-red);
+  box-shadow: 0 0 0 2px var(--brand-accent);
 }
 
 /* --- Tabs (admin page) --- */
@@ -958,7 +972,7 @@ label {
 .tabs {
   display: flex;
   gap: 0.25rem;
-  border-bottom: 2px solid var(--bog-grey-light);
+  border-bottom: 2px solid var(--color-border);
   margin-bottom: 1.5rem;
   overflow-x: auto;
   overflow-y: hidden;
@@ -972,7 +986,7 @@ label {
   text-transform: uppercase;
   letter-spacing: 0.03em;
   font-size: 0.95rem;
-  color: var(--bog-grey);
+  color: var(--color-muted);
   cursor: pointer;
   border-bottom: 3px solid transparent;
   margin-bottom: -2px;
@@ -981,12 +995,12 @@ label {
 }
 
 .tab-btn:hover {
-  color: var(--bog-charcoal);
+  color: var(--brand-dark);
 }
 
 .tab-btn.active {
-  color: var(--bog-red);
-  border-bottom-color: var(--bog-red);
+  color: var(--brand-accent);
+  border-bottom-color: var(--brand-accent);
 }
 
 .tab-panel {
@@ -1085,4 +1099,144 @@ label {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+}
+
+/* Admin > Branding */
+.colour-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0 1.5rem;
+}
+
+.colour-fields input[type="color"] {
+  width: 88px;
+  height: 48px;
+  padding: 4px;
+  cursor: pointer;
+}
+
+.brand-preview {
+  --preview-dark: var(--brand-dark);
+  --preview-accent: var(--brand-accent);
+  margin: 0.5rem 0 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+  max-width: 420px;
+}
+
+.brand-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 1rem;
+  background: var(--preview-dark);
+  color: #fff;
+}
+
+.brand-preview-header img {
+  height: 26px;
+  max-width: 50%;
+  object-fit: contain;
+}
+
+.brand-preview-body {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+  background: #fff;
+  color: var(--preview-dark);
+}
+
+.brand-preview-number {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--preview-accent);
+}
+
+.brand-preview-button {
+  margin-left: auto;
+  padding: 0.45rem 0.9rem;
+  border-radius: 6px;
+  background: var(--preview-accent);
+  color: #fff;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.85rem;
+}
+
+.brand-image-preview {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.75rem 0 1rem;
+  padding: 1.25rem;
+  border-radius: 10px;
+  background: var(--brand-dark);
+}
+
+.brand-image-preview img {
+  max-height: 96px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.brand-icon-preview {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
+.brand-icon-preview img {
+  border-radius: 18%;
+}
+
+.upload-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.upload-form input[type="file"] {
+  width: auto;
+  max-width: 100%;
+}
+
+/* Admin > Getting Started checklist (new installs) */
+.setup-card {
+  border-left: 6px solid var(--brand-accent);
+}
+
+.setup-steps {
+  margin: 1rem 0 0;
+  padding-left: 1.5rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.setup-steps li.is-done a {
+  color: var(--color-muted);
+  text-decoration: line-through;
+}
+
+.setup-steps li.is-done::marker {
+  content: "\2713  ";
+  color: var(--brand-accent);
+}
+
+.setup-step-status {
+  display: block;
+  font-size: 0.85rem;
+}
+
+.setup-step-status:empty {
+  display: none;
+}
+
+.setup-all-done {
+  margin: 1rem 0 0;
+  font-weight: 600;
+  color: var(--brand-accent-dark);
 }

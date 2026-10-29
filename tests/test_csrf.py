@@ -88,7 +88,7 @@ def test_admin_action_with_token_works(app, client, admin_barber, barber, csrf_o
 
 
 def test_kiosk_check_in_needs_the_pages_token(app, client, locations, csrf_on):
-    url = kiosk_url(app, "launceston")
+    url = kiosk_url(app, "main-street")
     client.post(url, data={"customer_name": "Forged"})
     client.post(url, data={"customer_name": "Real", "csrf_token": _token(client, url)})
 

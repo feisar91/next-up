@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Profile - Barber on George{% endblock %}
+{% block title %}Profile - {{ brand.name }}{% endblock %}
 {% block content %}
   <h1>Your Profile</h1>
 
@@ -11,7 +11,7 @@
         <label for="name">Display name</label>
         <input type="text" id="name" name="name" value="{{ current_user.name }}" maxlength="120" required>
       </div>
-      <p class="meta" style="color:var(--bog-grey);">
+      <p class="meta" style="color:var(--color-muted);">
         Shown on the check-in kiosk, the staff dashboard and in metrics.
       </p>
       <p><strong>Username:</strong> {{ current_user.username }}</p>
@@ -26,7 +26,7 @@
           {% endfor %}
         </select>
       </div>
-      <p class="meta" style="color:var(--bog-grey);">
+      <p class="meta" style="color:var(--color-muted);">
         This is offered as a one-click option on the location picker after you log in - it won't stop you choosing a different location on any given day.
       </p>
       <button type="submit" class="btn">Save Profile</button>

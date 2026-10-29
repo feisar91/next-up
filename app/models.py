@@ -300,3 +300,14 @@ class Setting(db.Model):
 
     key = db.Column(db.String(64), primary_key=True)
     value = db.Column(db.String(255), nullable=False)
+
+
+class BrandAsset(db.Model):
+    """An uploaded branding image ("logo" or "icon"), re-encoded as PNG by
+    app/branding.py. Kept in the database so a database backup includes it."""
+
+    __tablename__ = "brand_assets"
+
+    key = db.Column(db.String(32), primary_key=True)
+    data = db.Column(db.LargeBinary, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)

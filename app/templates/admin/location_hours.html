@@ -9,7 +9,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field">
         <label><input type="checkbox" name="auto_hours" style="width:auto;display:inline-block;" {% if auto_hours %}checked{% endif %}> Open and close automatically</label>
-        <p class="meta" style="color:var(--bog-grey);">
+        <p class="meta" style="color:var(--color-muted);">
           The kiosk opens to check-ins at opening time and closes at closing time, less the cutoff below. Barbers can still open or close by hand; that holds until the next scheduled change, or midnight at the latest.
         </p>
       </div>
@@ -51,7 +51,7 @@
 
   <div class="card" style="max-width:640px;" id="special-hours">
     <h2>Holidays and Special Hours</h2>
-    <p class="meta" style="color:var(--bog-grey);">Dates that don't follow the weekly hours, e.g. public holidays or a short Christmas Eve.</p>
+    <p class="meta" style="color:var(--color-muted);">Dates that don't follow the weekly hours, e.g. public holidays or a short Christmas Eve.</p>
 
     {% if special_hours %}
       <div style="overflow-x:auto;">
@@ -108,6 +108,6 @@
       </div>
       <button type="submit" class="btn">Add Date</button>
     </form>
-    <p class="meta" style="color:var(--bog-grey);">Adding a date that's already listed replaces it. To use the times, untick "Closed all day".</p>
+    <p class="meta" style="color:var(--color-muted);">Adding a date that's already listed replaces it. To use the times, untick "Closed all day".</p>
   </div>
 {% endblock %}

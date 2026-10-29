@@ -28,7 +28,7 @@ def monday(hour, minute=0, weeks_ahead=0, days_ahead=0):
     return at(date.fromordinal(MONDAY.toordinal() + weeks_ahead * 7 + days_ahead), hour, minute)
 
 
-def _set_hours(app, slug="launceston", days=range(0, 6), opens=time(9), closes=time(17, 30), auto=True, cutoff=0):
+def _set_hours(app, slug="main-street", days=range(0, 6), opens=time(9), closes=time(17, 30), auto=True, cutoff=0):
     """Mon-Sat 9:00-5:30 by default, Sunday closed."""
     with app.app_context():
         location = Location.query.filter_by(slug=slug).one()
@@ -38,18 +38,18 @@ def _set_hours(app, slug="launceston", days=range(0, 6), opens=time(9), closes=t
         db.session.commit()
 
 
-def _location(slug="launceston"):
+def _location(slug="main-street"):
     return Location.query.filter_by(slug=slug).one()
 
 
-def _add_special(app, day, opens=None, closes=None, slug="launceston"):
+def _add_special(app, day, opens=None, closes=None, slug="main-street"):
     with app.app_context():
         location = _location(slug)
         location.special_hours.append(SpecialHours(date=day, opens_at=opens, closes_at=closes))
         db.session.commit()
 
 
-def _set_closed(app, closed, slug="launceston"):
+def _set_closed(app, closed, slug="main-street"):
     with app.app_context():
         _location(slug).closed = closed
         db.session.commit()
@@ -126,15 +126,15 @@ def test_schedule_opens_and_closes_the_store(app, locations):
     _set_closed(app, True)
 
     with app.app_context():
-        assert [loc.slug for loc in apply_all_schedules(monday(9))] == ["launceston"]
+        assert [loc.slug for loc in apply_all_schedules(monday(9))] == ["main-street"]
         assert _location().closed is False
         assert apply_all_schedules(monday(12)) == []  # already open
         apply_all_schedules(monday(17, 30))
         assert _location().closed is True
 
     assert _auto_entries(app) == [
-        ("Automatic", "location.open", "Opened Launceston to new check-ins (opening hours)", "automatic"),
-        ("Automatic", "location.close", "Closed Launceston to new check-ins (opening hours)", "automatic"),
+        ("Automatic", "location.open", "Opened Main Street to new check-ins (opening hours)", "automatic"),
+        ("Automatic", "location.close", "Closed Main Street to new check-ins (opening hours)", "automatic"),
     ]
 
 
@@ -144,14 +144,14 @@ def test_schedule_tells_the_kiosk(app, client, locations):
     with app.app_context():
         token = _location().kiosk_token
     sio_client = socketio.test_client(app, flask_test_client=client)
-    sio_client.emit("join", {"location": "launceston", "token": token})
+    sio_client.emit("join", {"location": "main-street", "token": token})
     sio_client.get_received()
 
     with app.app_context():
         apply_all_schedules(monday(9))
 
     updates = [evt["args"][0] for evt in sio_client.get_received() if evt["name"] == "store_status"]
-    assert updates == [{"location": "launceston", "closed": False}]
+    assert updates == [{"location": "main-street", "closed": False}]
     sio_client.disconnect()
 
 
@@ -210,8 +210,8 @@ def test_staff_close_button_holds_against_the_schedule(app, client, barber, loca
     _set_hours(app)
     login(client, barber["username"], barber["password"])
     with patch("app.opening_hours.utcnow", return_value=monday(15)):
-        client.post("/staff/launceston/store", data={"closed": "1"})
-        html = client.get("/staff/launceston").data.decode()
+        client.post("/staff/main-street/store", data={"closed": "1"})
+        html = client.get("/staff/main-street").data.decode()
 
     assert "Closed manually. Opens automatically Tuesday at 9:00 am." in html
     with app.app_context():
@@ -223,8 +223,8 @@ def test_staff_card_says_a_late_manual_opening_closes_at_midnight(app, client, b
     _set_closed(app, True)
     login(client, barber["username"], barber["password"])
     with patch("app.opening_hours.utcnow", return_value=monday(20)):
-        client.post("/staff/launceston/store", data={"closed": "0"})
-        html = client.get("/staff/launceston").data.decode()
+        client.post("/staff/main-street/store", data={"closed": "0"})
+        html = client.get("/staff/main-street").data.decode()
     assert "Opened manually. Closes automatically at midnight." in html
     assert "to check-ins" not in html
 
@@ -236,13 +236,13 @@ def test_closed_kiosk_says_when_it_reopens(app, client, locations):
     _set_hours(app)
     _set_closed(app, True)
     with patch("app.opening_hours.utcnow", return_value=monday(18)):
-        html = client.get(kiosk_url(app, "launceston")).data.decode()
+        html = client.get(kiosk_url(app, "main-street")).data.decode()
     assert "Back Tuesday at 9:00 am." in html
 
 
 def test_closed_kiosk_without_automatic_hours_keeps_the_generic_message(app, client, locations):
     _set_closed(app, True)
-    html = client.get(kiosk_url(app, "launceston")).data.decode()
+    html = client.get(kiosk_url(app, "main-street")).data.decode()
     assert "Please check back later." in html
     with app.app_context():
         assert reopens_text(_location(), monday(18)) is None
@@ -252,7 +252,7 @@ def test_staff_card_says_when_the_store_closes(app, client, barber, locations):
     _set_hours(app)
     login(client, barber["username"], barber["password"])
     with patch("app.opening_hours.utcnow", return_value=monday(10)):
-        html = client.get("/staff/launceston").data.decode()
+        html = client.get("/staff/main-street").data.decode()
     assert "Closes to check-ins automatically at 5:30 pm." in html
 
 
@@ -273,12 +273,12 @@ def _weekly_form(days=range(0, 6), opens="09:00", closes="17:30", auto=True, cut
 
 def test_admin_saves_weekly_hours(app, client, admin_barber, locations):
     login(client, admin_barber["username"], admin_barber["password"])
-    url = f"/admin/locations/{locations['launceston']}/hours"
+    url = f"/admin/locations/{locations['main-street']}/hours"
     assert client.get(url).status_code == 200
 
     with patch("app.opening_hours.utcnow", return_value=monday(10)):
         resp = client.post(url, data=_weekly_form(cutoff="15"), follow_redirects=True)
-    assert b"Opening hours for Launceston saved." in resp.data
+    assert b"Opening hours for Main Street saved." in resp.data
 
     with app.app_context():
         location = _location()
@@ -287,7 +287,7 @@ def test_admin_saves_weekly_hours(app, client, admin_barber, locations):
         assert sorted(h.weekday for h in location.opening_hours) == [0, 1, 2, 3, 4, 5]
         entry = AdminAction.query.filter_by(action="location.hours").one()
         assert entry.summary == (
-            "Changed opening hours for Launceston: turned on automatic opening; "
+            "Changed opening hours for Main Street: turned on automatic opening; "
             "Mon closed to 9:00 am-5:30 pm; Tue closed to 9:00 am-5:30 pm; Wed closed to 9:00 am-5:30 pm; "
             "Thu closed to 9:00 am-5:30 pm; Fri closed to 9:00 am-5:30 pm; Sat closed to 9:00 am-5:30 pm; "
             "check-in cutoff 0 to 15 minutes"
@@ -297,7 +297,7 @@ def test_admin_saves_weekly_hours(app, client, admin_barber, locations):
 def test_turning_on_automatic_hours_applies_them_straight_away(app, client, admin_barber, locations):
     login(client, admin_barber["username"], admin_barber["password"])
     with patch("app.opening_hours.utcnow", return_value=monday(20)):
-        client.post(f"/admin/locations/{locations['launceston']}/hours", data=_weekly_form())
+        client.post(f"/admin/locations/{locations['main-street']}/hours", data=_weekly_form())
     with app.app_context():
         assert _location().closed is True
         assert AdminAction.query.filter_by(action="location.close", category="automatic").count() == 1
@@ -306,14 +306,14 @@ def test_turning_on_automatic_hours_applies_them_straight_away(app, client, admi
 def test_saving_unchanged_hours_is_not_logged(app, client, admin_barber, locations):
     _set_hours(app, auto=False)
     login(client, admin_barber["username"], admin_barber["password"])
-    client.post(f"/admin/locations/{locations['launceston']}/hours", data=_weekly_form(auto=False))
+    client.post(f"/admin/locations/{locations['main-street']}/hours", data=_weekly_form(auto=False))
     with app.app_context():
         assert AdminAction.query.filter_by(action="location.hours").count() == 0
 
 
 def test_admin_hours_validation(app, client, admin_barber, locations):
     login(client, admin_barber["username"], admin_barber["password"])
-    url = f"/admin/locations/{locations['launceston']}/hours"
+    url = f"/admin/locations/{locations['main-street']}/hours"
 
     resp = client.post(url, data=_weekly_form(opens="17:00", closes="09:00"))
     assert b"Closing time must be after opening time for Monday." in resp.data
@@ -333,7 +333,7 @@ def test_admin_hours_validation(app, client, admin_barber, locations):
 
 def test_admin_adds_and_removes_special_hours(app, client, admin_barber, locations):
     login(client, admin_barber["username"], admin_barber["password"])
-    base = f"/admin/locations/{locations['launceston']}/special-hours"
+    base = f"/admin/locations/{locations['main-street']}/special-hours"
 
     with patch("app.admin.datetime") as fake_datetime:
         fake_datetime.now.return_value = monday(8).astimezone(HOBART)
@@ -353,27 +353,27 @@ def test_admin_adds_and_removes_special_hours(app, client, admin_barber, locatio
     with app.app_context():
         assert [s.date for s in _location().special_hours] == [date(2026, 12, 24)]
         assert [a.summary for a in AdminAction.query.filter(AdminAction.action.like("location.special%"))] == [
-            "Set Launceston to 9:00 am-2:00 pm on Thu 24 Dec 2026 (Christmas Eve)",
-            "Set Launceston to closed on Fri 25 Dec 2026",
-            "Removed the special hours for Launceston on Fri 25 Dec 2026",
+            "Set Main Street to 9:00 am-2:00 pm on Thu 24 Dec 2026 (Christmas Eve)",
+            "Set Main Street to closed on Fri 25 Dec 2026",
+            "Removed the special hours for Main Street on Fri 25 Dec 2026",
         ]
 
 
 def test_locations_tab_links_to_opening_hours(app, client, admin_barber, locations):
     login(client, admin_barber["username"], admin_barber["password"])
     html = client.get("/admin/").data.decode()
-    assert f'href="/admin/locations/{locations["launceston"]}/hours"' in html
+    assert f'href="/admin/locations/{locations["main-street"]}/hours"' in html
     assert "<td>Manual</td>" in html
 
 
 def test_deleting_a_location_deletes_its_hours(app, client, admin_barber, locations):
-    _set_hours(app, slug="kings-meadows")
-    _add_special(app, MONDAY, slug="kings-meadows")
+    _set_hours(app, slug="riverside")
+    _add_special(app, MONDAY, slug="riverside")
     login(client, admin_barber["username"], admin_barber["password"])
-    client.post(f"/admin/locations/{locations['kings-meadows']}/toggle-active")
-    client.post(f"/admin/locations/{locations['kings-meadows']}/delete")
+    client.post(f"/admin/locations/{locations['riverside']}/toggle-active")
+    client.post(f"/admin/locations/{locations['riverside']}/delete")
     with app.app_context():
-        assert Location.query.filter_by(slug="kings-meadows").first() is None
+        assert Location.query.filter_by(slug="riverside").first() is None
         assert OpeningHours.query.count() == 0
         assert SpecialHours.query.count() == 0
 

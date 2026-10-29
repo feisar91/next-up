@@ -28,12 +28,12 @@ def _entry(location_id, name, status, checked_in_at, called_at=None, completed_a
 def _yesterdays_leftovers(locations):
     """Two waiting and one in the chair from yesterday, plus one of each from today."""
     yesterday = utcnow() - timedelta(days=1)
-    launceston = locations["launceston"]
-    _entry(launceston, "Jamie", QueueEntry.STATUS_WAITING, yesterday)
-    _entry(launceston, "Sam", QueueEntry.STATUS_WAITING, yesterday)
-    _entry(launceston, "Robin", QueueEntry.STATUS_IN_PROGRESS, yesterday, called_at=yesterday + timedelta(minutes=10))
-    _entry(launceston, "Today Waiting", QueueEntry.STATUS_WAITING, utcnow())
-    _entry(launceston, "Today Chair", QueueEntry.STATUS_IN_PROGRESS, utcnow(), called_at=utcnow())
+    main_street = locations["main-street"]
+    _entry(main_street, "Jamie", QueueEntry.STATUS_WAITING, yesterday)
+    _entry(main_street, "Sam", QueueEntry.STATUS_WAITING, yesterday)
+    _entry(main_street, "Robin", QueueEntry.STATUS_IN_PROGRESS, yesterday, called_at=yesterday + timedelta(minutes=10))
+    _entry(main_street, "Today Waiting", QueueEntry.STATUS_WAITING, utcnow())
+    _entry(main_street, "Today Chair", QueueEntry.STATUS_IN_PROGRESS, utcnow(), called_at=utcnow())
     db.session.commit()
 
 
@@ -68,7 +68,7 @@ def test_clearing_is_logged_once_per_location(app, locations):
             (
                 "Automatic",
                 "automatic",
-                "Cleared 3 customers left in the Launceston queue from before today: "
+                "Cleared 3 customers left in the Main Street queue from before today: "
                 "2 waiting marked as no-shows, 1 in the chair marked done",
             )
         ]
@@ -79,12 +79,12 @@ def test_cleared_entries_leave_the_staff_screens(app, client, barber, locations)
         _yesterdays_leftovers(locations)
     login(client, barber["username"], barber["password"])
     sio_client = socketio.test_client(app, flask_test_client=client)
-    sio_client.emit("join", {"location": "launceston"})
+    sio_client.emit("join", {"location": "main-street"})
     sio_client.get_received()
 
     with app.app_context():
         clear_leftover_entries()
-        state = staff_queue_state(Location.query.filter_by(slug="launceston").one())
+        state = staff_queue_state(Location.query.filter_by(slug="main-street").one())
 
     assert [e["customer_name"] for e in state["waiting"]] == ["Today Waiting"]
     assert [e["customer_name"] for e in state["in_progress"]] == ["Today Chair"]
@@ -98,7 +98,7 @@ def test_cleared_cuts_count_but_add_no_time_in_the_chair(app, locations):
     with app.app_context():
         two_days_ago = utcnow() - timedelta(days=2)
         _entry(
-            locations["launceston"],
+            locations["main-street"],
             "Timed",
             QueueEntry.STATUS_DONE,
             two_days_ago,

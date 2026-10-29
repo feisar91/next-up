@@ -1,7 +1,7 @@
 {# Home-screen install (see app/web_app.py). Needs manifest_url and app_title. #}
 <link rel="manifest" href="{{ manifest_url }}">
-<meta name="theme-color" content="#282721">
-<link rel="apple-touch-icon" href="{{ url_for('static', filename='images/favicon-180.png') }}">
+<meta name="theme-color" content="{{ brand.dark }}">
+<link rel="apple-touch-icon" href="{{ brand.icon_url(180) }}">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="{{ app_title }}">
