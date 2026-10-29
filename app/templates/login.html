@@ -3,6 +3,7 @@
 {% block content %}
   <div class="card" style="max-width:420px;margin:2rem auto;">
     <h1 style="text-align:center;">Staff Log In</h1>
+    {% with setup=False %}{% include "_cookie_warning.html" %}{% endwith %}
     <form method="post">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field">
