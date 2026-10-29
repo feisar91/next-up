@@ -4,6 +4,7 @@
 services:
   app:
     image: ghcr.io/feisar91/next-up:${NEXT_UP_VERSION:-latest}
+    container_name: next-up-app
     restart: unless-stopped
     environment:
       SECRET_KEY: ${SECRET_KEY:-}
@@ -20,7 +21,7 @@ services:
       LOGIN_LOCKOUT_MINUTES: ${LOGIN_LOCKOUT_MINUTES:-15}
       BEHIND_PROXY: ${BEHIND_PROXY:-false}
     volumes:
-      - checkin_app_data:/data
+      - app_data:/data
     ports:
       - "${APP_PORT:-8000}:8000"
     depends_on:
@@ -29,19 +30,27 @@ services:
 
   postgres:
     image: postgres:16-alpine
+    container_name: next-up-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-checkin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-checkin}
       POSTGRES_DB: ${POSTGRES_DB:-checkin}
     volumes:
-      - checkin_pg_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
 
+# Fixed names, so they don't depend on the folder this file is in.
 volumes:
-  checkin_pg_data:
-  checkin_app_data:
+  postgres_data:
+    name: next-up-postgres-data
+  app_data:
+    name: next-up-app-data
+
+networks:
+  default:
+    name: next-up
