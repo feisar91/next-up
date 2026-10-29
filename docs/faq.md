@@ -1,6 +1,7 @@
 ---
 title: Questions and problems
 lead: Short answers to the things people ask most, and fixes for the usual problems.
+next: { title: "How it works", url: /technical/how-it-works/ }
 ---
 
 ## About Next Up

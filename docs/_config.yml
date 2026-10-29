@@ -5,6 +5,8 @@ repository: feisar91/next-up
 # Where the site is served from: /<repository name> for GitHub Pages project
 # sites, or "" on a custom domain.
 baseurl: /next-up
+# The site's own address, for the full links that link previews need.
+url: https://feisar91.github.io
 
 permalink: pretty
 markdown: kramdown

@@ -56,6 +56,8 @@ start
 docker compose exec -T app flask seed-demo
 "$PYTHON" docs/tools/capture.py demo --base "$BASE" "$@"
 
+"$PYTHON" docs/tools/social-image.py
+
 if [ -f docs/assets/video/demo.webm ]; then
     echo "Converting the video to MP4"
     docker run --rm -v "$PWD/docs/assets/video:/video" linuxserver/ffmpeg:7.1.1 \

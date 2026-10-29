@@ -14,3 +14,7 @@
     - { title: "Putting it online", url: /guides/server/ }
     - { title: "Backups and upgrades", url: /guides/maintenance/ }
     - { title: "Questions and problems", url: /faq/ }
+- title: Technical
+  pages:
+    - { title: "How it works", url: /technical/how-it-works/ }
+    - { title: "Development and releases", url: /technical/development/ }

@@ -1,6 +1,6 @@
 # Next Up
 
-Walk-in check-in and queue system for barber shops, replacing the paper sign-in pad. Open source and self-hosted: each install is one business (one or more locations) with its own name, colours and logo set from the admin Branding tab. It started as one shop's in-house system; nothing in the code should be specific to one shop. See [README.md](README.md) for the full user-facing docs, Docker setup, and VPS deployment.
+Walk-in check-in and queue system for barber shops, replacing the paper sign-in pad. Open source and self-hosted: each install is one business (one or more locations) with its own name, colours and logo set from the admin Branding tab. It started as one shop's in-house system; nothing in the code should be specific to one shop. User guides are in [docs/](docs/) (published at https://feisar91.github.io/next-up/); the technical overview is [docs/technical/how-it-works.md](docs/technical/how-it-works.md) and running, testing and releasing is [docs/technical/development.md](docs/technical/development.md). [README.md](README.md) is just the quick start.
 
 ## What it does
 
@@ -73,7 +73,7 @@ Customer flow: kiosk check-in creates a `QueueEntry` (`waiting`), a barber calls
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build   # build from this checkout, app on http://localhost:8000
 # then open the app in a browser to create the admin login
-docker compose exec app python -m pytest       # tests
+docker compose exec app python -m pytest -p no:cacheprovider   # tests (the container can't write pytest's cache)
 ```
 
 `docker-compose.yml` alone runs the published image (`ghcr.io/feisar91/next-up`, version from `NEXT_UP_VERSION`); `docker-compose.dev.yml` adds `build: .`. Images are built by [.github/workflows/publish.yml](.github/workflows/publish.yml): pushes to `main` publish `:main`, tags `vX.Y.Z` publish `:X.Y.Z`, `:X.Y`, `:X`, `:latest` and a GitHub release carrying `docker-compose.yml` and `env.example` (what the install docs download).

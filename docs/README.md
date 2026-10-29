@@ -18,6 +18,9 @@ build step to run yourself.
   docs/tools/build-media.sh
   ```
 
+  It also makes `assets/social.png`, the picture shown when a link to the site is
+  pasted into Facebook, Discord and so on (`tools/social-image.py`).
+
 To preview the site locally with Docker:
 
 ```bash
