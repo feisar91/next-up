@@ -31,7 +31,8 @@ PY
 
 flask db upgrade
 
-# First-run only: creates the locations and an "admin" login if no logins exist yet.
+# First run only: says to create the admin login in the browser, or creates it from
+# ADMIN_PASSWORD if that is set. Does nothing once any login exists.
 flask bootstrap
 
 exec "$@"

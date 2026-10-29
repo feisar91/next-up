@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Choose Location - Next Up{% endblock %}
+{% block title %}Choose Location - {{ brand.name }}{% endblock %}
 {% block content %}
   <h1>Where are you working today?</h1>
 
   {% if default_location %}
     <div class="card" style="text-align:center;">
-      <p class="meta" style="color:var(--brand-grey);margin-top:0;">Your usual spot</p>
+      <p class="meta" style="color:var(--color-muted);margin-top:0;">Your usual spot</p>
       <form method="post" action="{{ url_for('staff.choose_location') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="location_id" value="{{ default_location.id }}">
@@ -18,7 +18,7 @@
 
   {% if other_locations %}
     <div class="card">
-      {% if default_location %}<p class="meta" style="color:var(--brand-grey);margin-top:0;">Or choose a different location</p>{% endif %}
+      {% if default_location %}<p class="meta" style="color:var(--color-muted);margin-top:0;">Or choose a different location</p>{% endif %}
       <div style="display:grid;gap:0.75rem;">
         {% for location in other_locations %}
           <form method="post" action="{{ url_for('staff.choose_location') }}">
@@ -32,6 +32,13 @@
   {% endif %}
 
   {% if not default_location and not other_locations %}
-    <p>No locations are set up yet.</p>
+    <div class="card">
+      <p style="margin-top:0;">No locations are set up yet.</p>
+      {% if current_user.is_admin %}
+        <a href="{{ url_for('admin.overview', _anchor='locations') }}" class="btn">Add a Location</a>
+      {% else %}
+        <p class="meta" style="margin-bottom:0;">Ask your admin to add one, then come back here.</p>
+      {% endif %}
+    </div>
   {% endif %}
 {% endblock %}

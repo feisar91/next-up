@@ -16,7 +16,7 @@ def _age_on_duty(app, barber_id, extra=timedelta(minutes=1)):
 
 def _admin_logs_in(client, locations, admin_barber, barber):
     login(client, admin_barber["username"], admin_barber["password"])
-    client.post(f"/admin/barbers/{barber['id']}/login", data={"location_id": locations["mainstreet"]})
+    client.post(f"/admin/barbers/{barber['id']}/login", data={"location_id": locations["main-street"]})
 
 
 def _sweep(app):
@@ -31,7 +31,7 @@ def _on_duty_location(app, barber_id):
 
 def test_going_on_duty_records_when(app, client, locations, barber):
     login(client, barber["username"], barber["password"])
-    client.get("/staff/mainstreet")
+    client.get("/staff/main-street")
     with app.app_context():
         since = db.session.get(Barber, barber["id"]).on_duty_since
     assert since is not None
@@ -45,13 +45,13 @@ def test_admin_logged_in_barber_goes_off_duty_after_the_session_lifetime(
     app, client, locations, barber, admin_barber
 ):
     _admin_logs_in(client, locations, admin_barber, barber)
-    assert b"Alex" in client.get(kiosk_url(app, "mainstreet")).data
+    assert b"Alex" in client.get(kiosk_url(app, "main-street")).data
 
     _age_on_duty(app, barber["id"])
     assert _sweep(app) == [barber["id"]]
 
     assert _on_duty_location(app, barber["id"]) is None
-    assert b"Alex" not in client.get(kiosk_url(app, "mainstreet")).data
+    assert b"Alex" not in client.get(kiosk_url(app, "main-street")).data
 
 
 def test_admin_logged_in_barber_stays_on_duty_within_the_lifetime(
@@ -61,21 +61,21 @@ def test_admin_logged_in_barber_stays_on_duty_within_the_lifetime(
     _age_on_duty(app, barber["id"], extra=-timedelta(minutes=1))
 
     assert _sweep(app) == []
-    assert _on_duty_location(app, barber["id"]) == locations["mainstreet"]
+    assert _on_duty_location(app, barber["id"]) == locations["main-street"]
 
 
 def test_barber_with_a_live_session_stays_on_duty_on_a_long_shift(app, client, locations, barber):
     login(client, barber["username"], barber["password"])
-    client.get("/staff/mainstreet")
+    client.get("/staff/main-street")
     _age_on_duty(app, barber["id"], extra=timedelta(hours=3))
 
     assert _sweep(app) == []
-    assert _on_duty_location(app, barber["id"]) == locations["mainstreet"]
+    assert _on_duty_location(app, barber["id"]) == locations["main-street"]
 
 
 def test_barber_whose_phone_session_went_idle_goes_off_duty(app, client, locations, barber):
     login(client, barber["username"], barber["password"])
-    client.get("/staff/mainstreet")
+    client.get("/staff/main-street")
     _age_on_duty(app, barber["id"])
     with app.app_context():
         for record in LoginSession.query.filter_by(barber_id=barber["id"]):
@@ -88,8 +88,8 @@ def test_barber_whose_phone_session_went_idle_goes_off_duty(app, client, locatio
 
 def test_going_off_duty_automatically_ends_a_break(app, client, locations, barber):
     login(client, barber["username"], barber["password"])
-    client.get("/staff/mainstreet")
-    client.post("/staff/mainstreet/break", data={"on_break": "1"})
+    client.get("/staff/main-street")
+    client.post("/staff/main-street/break", data={"on_break": "1"})
     with app.app_context():
         LoginSession.query.filter_by(barber_id=barber["id"]).delete()
         db.session.commit()
@@ -116,10 +116,10 @@ def test_kiosk_gets_a_live_update_when_a_barber_goes_off_duty(app, client, locat
     _admin_logs_in(client, locations, admin_barber, barber)
     _age_on_duty(app, barber["id"])
     with app.app_context():
-        kiosk_token = Location.query.filter_by(slug="mainstreet").one().kiosk_token
+        kiosk_token = Location.query.filter_by(slug="main-street").one().kiosk_token
 
     sio_client = socketio.test_client(app, flask_test_client=app.test_client())
-    sio_client.emit("join", {"location": "mainstreet", "token": kiosk_token})
+    sio_client.emit("join", {"location": "main-street", "token": kiosk_token})
     sio_client.get_received()
 
     _sweep(app)

@@ -189,8 +189,12 @@ def handle_join(data):
     broadcast_announcement(location)
     broadcast_kiosk_status(location)
     # Returned as the join acknowledgement: screens compare it with the version
-    # they were loaded with and reload after a deploy (app/static/js/app-version.js).
-    return {"version": current_app.config["APP_VERSION"]}
+    # they were loaded with and reload after a deploy or a branding change
+    # (app/static/js/app-version.js). A branding change also pushes it as
+    # "app_version" (app/branding.py notify_screens).
+    from app.branding import screen_version
+
+    return {"version": screen_version()}
 
 
 def _mark_seen(location_id, kind):
@@ -281,7 +285,13 @@ def device_status_update(location):
     status = device_status(location)
     update = {"location_id": location.id}
     for kind in DEVICE_KINDS:
-        update[kind] = {"html": str(render(status[kind], DEVICE_LABELS[kind])), "offline_in": status[kind]["offline_in"]}
+        update[kind] = {
+            "html": str(render(status[kind], DEVICE_LABELS[kind])),
+            "offline_in": status[kind]["offline_in"],
+            # "never" until a screen first connects: the Getting Started checklist
+            # ticks its devices step once a kiosk and a TV have each connected.
+            "state": status[kind]["state"],
+        }
     return update
 
 

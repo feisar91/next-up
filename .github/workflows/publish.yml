@@ -1,0 +1,94 @@
+name: Publish image
+
+# Builds the Docker image and pushes it to GitHub Container Registry
+# (ghcr.io/<owner>/next-up) for Intel/AMD and ARM servers, once the tests pass.
+#
+#   push to main        -> :main and :sha-<commit>
+#   push a tag v1.2.3   -> :1.2.3, :1.2, :1 and :latest
+#
+# Installs use :latest (or a version set with NEXT_UP_VERSION in .env).
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+
+  image:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/next-up
+          flavor: latest=false
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=ref,event=branch
+            type=sha
+          labels: |
+            org.opencontainers.image.title=Next Up
+            org.opencontainers.image.description=Walk-in check-in and queue screens for barber shops
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # For a version tag: a GitHub release with the two files an install needs, so
+  # https://github.com/<owner>/next-up/releases/latest/download/docker-compose.yml
+  # always matches the newest image.
+  release:
+    needs: image
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # .env.example is uploaded as env.example: release files can't start with a dot.
+        run: |
+          mkdir dist
+          cp docker-compose.yml dist/docker-compose.yml
+          cp .env.example dist/env.example
+          gh release create "$GITHUB_REF_NAME" dist/docker-compose.yml dist/env.example \
+            --title "Next Up $GITHUB_REF_NAME" --generate-notes

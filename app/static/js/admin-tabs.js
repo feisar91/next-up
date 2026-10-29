@@ -34,6 +34,11 @@
     });
   });
 
+  // Plain #tab links on the page (the Getting Started checklist) switch tabs.
+  window.addEventListener("hashchange", function () {
+    activate(window.location.hash.replace("#", ""));
+  });
+
   const initialTab = window.location.hash.replace("#", "");
   if (!initialTab || !activate(initialTab)) {
     activate(tabButtons[0].dataset.tab);

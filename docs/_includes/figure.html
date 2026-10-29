@@ -1,0 +1,7 @@
+{%- comment -%}
+  A screenshot. src: file in assets/img. size: wide (default), tablet, phone or card.
+{%- endcomment -%}
+<figure class="shot shot-{{ include.size | default: 'wide' }}">
+  <a href="{{ '/assets/img/' | append: include.src | relative_url }}"><img src="{{ '/assets/img/' | append: include.src | relative_url }}" alt="{{ include.alt }}" loading="lazy"></a>
+  {%- if include.caption %}<figcaption>{{ include.caption }}</figcaption>{% endif %}
+</figure>

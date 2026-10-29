@@ -88,6 +88,9 @@
       window.checkAppVersion(ack, customerIsTyping);
     });
   });
+  socket.on("app_version", function (ack) {
+    window.checkAppVersion(ack, customerIsTyping);
+  });
 
   socket.on("barbers_update", function (state) {
     if (!group) return;

@@ -109,14 +109,14 @@ def test_metrics_page_loads_for_admin(client, admin_barber):
 
 
 def test_metrics_reflects_completed_cuts(app, client, admin_barber, barber, locations):
-    client.post(kiosk_url(app, "mainstreet"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
+    client.post(kiosk_url(app, "main-street"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
     login(client, barber["username"], barber["password"])
 
     with app.app_context():
         entry = QueueEntry.query.filter_by(customer_name="Jamie").first()
         entry_id = entry.id
-    client.post(f"/staff/mainstreet/call/{entry_id}")
-    client.post(f"/staff/mainstreet/complete/{entry_id}")
+    client.post(f"/staff/main-street/call/{entry_id}")
+    client.post(f"/staff/main-street/complete/{entry_id}")
 
     client.post("/logout")
     login(client, admin_barber["username"], admin_barber["password"])
@@ -136,7 +136,7 @@ def test_metrics_averages_wait_and_service_time(app, client, admin_barber, barbe
     with app.app_context():
         now = datetime.now(timezone.utc)
         entry = QueueEntry(
-            location_id=locations["mainstreet"],
+            location_id=locations["main-street"],
             customer_name="Timed Customer",
             status=QueueEntry.STATUS_DONE,
             checked_in_at=now - timedelta(minutes=15),
@@ -156,7 +156,7 @@ def test_metrics_averages_wait_and_service_time(app, client, admin_barber, barbe
 
 def test_toggle_location_active_requires_admin(client, barber, locations):
     login(client, barber["username"], barber["password"])
-    resp = client.post(f"/admin/locations/{locations['mainstreet']}/toggle-active")
+    resp = client.post(f"/admin/locations/{locations['main-street']}/toggle-active")
     assert resp.status_code == 403
 
 
@@ -207,7 +207,7 @@ def test_removed_default_location_is_not_offered_as_one_click_continue(
     # barber's default is Main Street (see conftest); remove it and make sure the
     # picker doesn't still offer a dead one-click "Continue to Main Street".
     login(client, admin_barber["username"], admin_barber["password"])
-    client.post(f"/admin/locations/{locations['mainstreet']}/toggle-active")
+    client.post(f"/admin/locations/{locations['main-street']}/toggle-active")
     client.post("/logout")
 
     resp = login(client, barber["username"], barber["password"])
@@ -268,7 +268,7 @@ def test_deleting_a_barber_keeps_their_queue_history_but_clears_the_name_link(
     app, client, admin_barber, barber, locations
 ):
     client.post(
-        kiosk_url(app, "mainstreet"),
+        kiosk_url(app, "main-street"),
         data={"customer_name": "Jamie", "preferred_barber_id": barber["id"]},
     )
     login(client, barber["username"], barber["password"])
@@ -276,7 +276,7 @@ def test_deleting_a_barber_keeps_their_queue_history_but_clears_the_name_link(
     with app.app_context():
         entry = QueueEntry.query.filter_by(customer_name="Jamie").first()
         entry_id = entry.id
-    client.post(f"/staff/mainstreet/call/{entry_id}")
+    client.post(f"/staff/main-street/call/{entry_id}")
     client.post("/logout")
 
     login(client, admin_barber["username"], admin_barber["password"])
@@ -339,8 +339,8 @@ def test_cannot_delete_a_removed_location_with_history(app, client, admin_barber
 
 def test_deleting_a_location_clears_barbers_who_pointed_to_it(app, client, admin_barber, barber, locations):
     login(client, admin_barber["username"], admin_barber["password"])
-    client.post(f"/admin/locations/{locations['mainstreet']}/toggle-active")
-    client.post(f"/admin/locations/{locations['mainstreet']}/delete")
+    client.post(f"/admin/locations/{locations['main-street']}/toggle-active")
+    client.post(f"/admin/locations/{locations['main-street']}/delete")
 
     with app.app_context():
         updated = db.session.get(Barber, barber["id"])

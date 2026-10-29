@@ -1,0 +1,16 @@
+{# Shown by cookie-check.js when this browser won't keep a login cookie. Needs `setup` (bool). #}
+<div class="flash flash-error cookie-warning" id="cookie-warning" role="alert" hidden
+     data-secure-cookies="{{ 'true' if config.SESSION_COOKIE_SECURE else 'false' }}">
+  <div data-reason="http" hidden>
+    <strong>Logins won't work at this address yet.</strong>
+    <p>This page was opened over plain <code>http://</code>, and Next Up only keeps people logged in over HTTPS, so your browser would forget the login straight away.</p>
+    <p>Open the app at an <code>https://</code> address, or, while you're trying it out, add <code>SESSION_COOKIE_SECURE=false</code> to the <code>.env</code> file and restart it with <code>docker compose up -d</code>.</p>
+  </div>
+  <div data-reason="blocked" hidden>
+    <strong>This browser is blocking cookies.</strong>
+    <p>Next Up needs a cookie to keep you logged in. Allow cookies for this site in the browser's settings, then reload the page.</p>
+  </div>
+  {# The form's CSRF token lives in the same cookie, so the form is refused too. #}
+  <p>Until it's fixed, {{ "creating the admin login" if setup else "logging in" }} will only bring you back to this page.</p>
+</div>
+<script src="{{ url_for('static', filename='js/cookie-check.js') }}"></script>

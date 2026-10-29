@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Next Up - Check-In{% endblock %}
+{% block title %}{{ brand.name }}{% endblock %}
 {% block content %}
   <div class="card" style="max-width:480px;margin:2rem auto;text-align:center;">
-    <h1>Next Up</h1>
-    <p style="color:var(--brand-grey);">
+    <h1>{{ brand.name }}</h1>
+    <p style="color:var(--color-muted);">
       Check-in kiosks and TV displays are set up per-location on their own dedicated devices.
       Staff can log in below to manage the queue.
     </p>

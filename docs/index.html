@@ -1,0 +1,98 @@
+---
+title: Next Up
+home: true
+---
+<section class="hero">
+  <div class="hero-inner">
+    <h1>Walk-in check-in for barber shops</h1>
+    <p>Customers put their name in on a tablet by the door. The queue shows on the TV. Barbers call the next person up from their phone. It replaces the paper sign-in sheet, and it's free.</p>
+    <div class="hero-actions">
+      <a class="button" href="{{ '/getting-started/' | relative_url }}">Set it up</a>
+      <a class="button button-quiet" href="#video">Watch it work</a>
+    </div>
+    <img class="hero-image" src="{{ '/assets/img/hero.webp' | relative_url }}" alt="A barber's phone, the shop TV and the check-in tablet, all showing the same queue">
+  </div>
+</section>
+
+<section class="section" id="video">
+  <h2>See it in 30 seconds</h2>
+  <p class="section-intro">A customer checks in at the door, the TV picks them up straight away, and a barber calls them over when a chair is free.</p>
+  {% include video.html %}
+</section>
+
+<section class="section section-tight">
+  <h2>What's in it</h2>
+  <p class="section-intro">Four screens, all showing the same live queue. Nobody has to refresh anything.</p>
+
+  <div class="feature">
+    <div class="feature-text">
+      <h3>The kiosk</h3>
+      <p>A tablet by the door. Customers type their name, pick a barber if they want one, and tap Check In. They're told their place in line.</p>
+      <p>A parent can check their kids in at the same time, up to six people at once. When the shop is closed, the kiosk says so, and when it opens again if you've set opening hours.</p>
+      <p><a href="{{ '/guides/kiosk-and-tv/' | relative_url }}">Setting up the kiosk</a></p>
+    </div>
+    <div class="feature-image is-tall"><img src="{{ '/assets/img/kiosk-group.webp' | relative_url }}" alt="The check-in kiosk with two names entered and a preferred barber picked" loading="lazy"></div>
+  </div>
+
+  <div class="feature">
+    <div class="feature-text">
+      <h3>The TV</h3>
+      <p>Who's in the chair and who's waiting, in order. People can see where they are without asking.</p>
+      <p>The whole room can read it, so names are cut down to a first name and an initial. Barbers see full names on their own screens.</p>
+    </div>
+    <div class="feature-image"><img src="{{ '/assets/img/tv.webp' | relative_url }}" alt="The TV display showing two customers in the chair and six waiting" loading="lazy"></div>
+  </div>
+
+  <div class="feature">
+    <div class="feature-text">
+      <h3>The barbers' screen</h3>
+      <p>Each barber logs in on their own phone, or on a shared tablet. They call the next customer, mark them done, or take a no-show off the list.</p>
+      <p>Tapped the wrong one? There's an undo for ten minutes. A barber can go on break so customers can't pick them, close the shop to new check-ins, or put up a notice like "Card machine down, cash only today".</p>
+      <p><a href="{{ '/guides/barbers/' | relative_url }}">The guide for barbers</a></p>
+    </div>
+    <div class="feature-image is-tall"><img src="{{ '/assets/img/staff-phone.webp' | relative_url }}" alt="The staff dashboard on a phone" loading="lazy"></div>
+  </div>
+
+  <div class="feature">
+    <div class="feature-text">
+      <h3>The owner's side</h3>
+      <p>Add your shops and barbers, set opening hours so the kiosk opens and closes itself, and see which screens are switched on right now.</p>
+      <p>Charts show cuts per day and per barber, average waits, and the busiest hours of the week. Every action is logged, so you can see who did what and when.</p>
+      <p><a href="{{ '/guides/admin/' | relative_url }}">Running the shop</a> &middot; <a href="{{ '/guides/metrics/' | relative_url }}">Metrics</a></p>
+    </div>
+    <div class="feature-image"><img src="{{ '/assets/img/metrics-heatmap.webp' | relative_url }}" alt="A heatmap of the busiest times of the week" loading="lazy"></div>
+  </div>
+
+  <div class="feature">
+    <div class="feature-text">
+      <h3>Your shop's look</h3>
+      <p>Put in your shop name, two colours and your logo. The kiosk, the TV and the barbers' screens change over within a few seconds.</p>
+      <p><a href="{{ '/guides/branding/' | relative_url }}">Changing the name, colours and logo</a></p>
+    </div>
+    <div class="feature-image is-tall"><img src="{{ '/assets/img/kiosk-branded.webp' | relative_url }}" alt="The kiosk with a shop's own logo and orange buttons" loading="lazy"></div>
+  </div>
+</section>
+
+<section class="section section-tight">
+  <h2>What you need</h2>
+  <p class="section-intro">Next Up runs on a computer you control and is reached through a web browser. There's no app to install from a store.</p>
+  <div class="needs">
+    <div class="need">
+      <h3>Somewhere to run it</h3>
+      <p>A small rented server (a VPS) is the usual choice, so barbers can reach it from anywhere. A spare computer in the shop also works. Either way it needs Docker.</p>
+    </div>
+    <div class="need">
+      <h3>A tablet</h3>
+      <p>Any tablet with an up-to-date browser, an iPad or an Android one, mounted by the door.</p>
+    </div>
+    <div class="need">
+      <h3>A TV (optional)</h3>
+      <p>Anything that can show a web page full screen: a smart TV browser, a streaming stick or a small PC.</p>
+    </div>
+    <div class="need">
+      <h3>Phones</h3>
+      <p>Barbers use the phones they already have. A shared tablet behind the counter works too.</p>
+    </div>
+  </div>
+  <p style="margin-top:2rem;"><a class="button" href="{{ '/getting-started/' | relative_url }}">Set it up</a></p>
+</section>

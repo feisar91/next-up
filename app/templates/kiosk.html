@@ -4,19 +4,26 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <title>Check In - {{ location.name }}</title>
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon-32.png') }}">
   {% with manifest_url=url_for('kiosk.web_app_manifest', location_slug=location.slug, token=token), app_title="Check-In" %}{% include "_web_app_meta.html" %}{% endwith %}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/brand.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/kiosk-display.css') }}">
+  {% include "_brand_head.html" %}
 </head>
 <body>
   {% with message="Connection lost - check-in is paused until it's back" %}{% include "_connection_banner.html" %}{% endwith %}
   <div class="kiosk-screen">
     <div class="kiosk-header">
-      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Next Up">
+      {% if brand.logo_url %}
+        <img src="{{ brand.logo_url }}" alt="{{ brand.name }}">
+      {% else %}
+        <div class="kiosk-brand-name">
+          <img src="{{ brand.mark_url }}" alt="">
+          <span>{{ brand.name }}</span>
+        </div>
+      {% endif %}
       <p class="kiosk-location-tag">{{ location.name }}</p>
       <div class="kiosk-header-rule"></div>
     </div>

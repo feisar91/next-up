@@ -4,7 +4,7 @@ from tests.conftest import kiosk_url, login
 
 
 def test_staff_dashboard_requires_login(client, locations):
-    resp = client.get("/staff/mainstreet")
+    resp = client.get("/staff/main-street")
     assert resp.status_code == 302
     assert "/login" in resp.headers["Location"]
 
@@ -120,7 +120,7 @@ def test_profile_blank_name_saves_nothing(app, client, barber, locations):
     with app.app_context():
         barber_obj = db.session.get(Barber, barber["id"])
         assert barber_obj.name == "Alex"
-        assert barber_obj.default_location_id == locations["mainstreet"]
+        assert barber_obj.default_location_id == locations["main-street"]
 
 
 def test_profile_self_service_password_change(app, client, barber):
@@ -261,7 +261,7 @@ def test_logo_links_to_staff_landing_when_authenticated(client, barber):
     assert b'href="/staff" class="brand-link"' in resp.data
 
 
-def test_logo_links_to_index_when_anonymous(client):
+def test_logo_links_to_index_when_anonymous(client, barber):
     resp = client.get("/login")
     assert b'href="/" class="brand-link"' in resp.data
 
@@ -308,7 +308,7 @@ def test_barber_can_change_their_display_name(app, client, barber):
 def test_nav_has_a_queue_link_marked_current_on_the_dashboard(client, locations, barber):
     login(client, barber["username"], barber["password"])
 
-    dashboard = client.get("/staff/mainstreet").data.decode()
+    dashboard = client.get("/staff/main-street").data.decode()
     assert '<a href="/staff" aria-current="page">Queue</a>' in dashboard
 
     profile = client.get("/staff/profile").data.decode()
@@ -326,7 +326,7 @@ def test_queue_link_returns_to_the_current_location(client, locations, barber):
     assert resp.headers["Location"].endswith("/staff/riverside")
 
 
-def test_home_page_shows_log_in_when_logged_out(client, locations):
+def test_home_page_shows_log_in_when_logged_out(client, locations, barber):
     resp = client.get("/")
     assert resp.status_code == 200
     assert b"Staff Log In" in resp.data
@@ -334,12 +334,12 @@ def test_home_page_shows_log_in_when_logged_out(client, locations):
 
 def test_home_page_sends_a_logged_in_barber_to_their_queue(client, locations, barber):
     login(client, barber["username"], barber["password"])
-    client.get("/staff/mainstreet")
+    client.get("/staff/main-street")
 
     resp = client.get("/")
     assert resp.status_code == 302
     assert resp.headers["Location"].endswith("/staff")
-    assert client.get("/", follow_redirects=True).request.path == "/staff/mainstreet"
+    assert client.get("/", follow_redirects=True).request.path == "/staff/main-street"
 
 
 def test_home_page_shows_log_in_after_logging_out(client, locations, barber):
