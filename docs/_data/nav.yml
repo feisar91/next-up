@@ -1,0 +1,16 @@
+- title: Get started
+  pages:
+    - { title: "Install and set up", url: /getting-started/ }
+    - { title: "Try the demo shop", url: /demo/ }
+- title: Guides
+  pages:
+    - { title: "For barbers", url: /guides/barbers/ }
+    - { title: "Kiosk and TV", url: /guides/kiosk-and-tv/ }
+    - { title: "Running the shop", url: /guides/admin/ }
+    - { title: "Your name, colours and logo", url: /guides/branding/ }
+    - { title: "Metrics and history", url: /guides/metrics/ }
+- title: Hosting
+  pages:
+    - { title: "Putting it online", url: /guides/server/ }
+    - { title: "Backups and upgrades", url: /guides/maintenance/ }
+    - { title: "Questions and problems", url: /faq/ }

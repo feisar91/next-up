@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Barber on George - Check-In{% endblock %}
+{% block title %}{{ brand.name }}{% endblock %}
 {% block content %}
   <div class="card" style="max-width:480px;margin:2rem auto;text-align:center;">
-    <h1>Barber on George</h1>
-    <p style="color:var(--bog-grey);">
+    <h1>{{ brand.name }}</h1>
+    <p style="color:var(--color-muted);">
       Check-in kiosks and TV displays are set up per-location on their own dedicated devices.
       Staff can log in below to manage the queue.
     </p>

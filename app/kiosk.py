@@ -4,6 +4,7 @@ from flask import Blueprint, abort, redirect, render_template, request, session,
 
 from app import audit, db
 from app.announcements import current_announcement
+from app.branding import get_brand
 from app.models import Location, QueueEntry, utcnow
 from app.opening_hours import reopens_text
 from app.sockets import broadcast_queue, kiosk_barbers, queue_state
@@ -60,7 +61,7 @@ def web_app_manifest(location_slug, token):
     return manifest_response(
         # Without the token, so a reinstall after regenerating the link replaces the old app.
         app_id=f"/kiosk/{location.slug}",
-        name=f"Barber on George Check-In - {location.name}",
+        name=f"{get_brand().name} Check-In - {location.name}",
         short_name="Check-In",
         start_url=kiosk_url,
         scope=kiosk_url,

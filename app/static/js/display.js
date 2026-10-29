@@ -13,6 +13,9 @@
       window.checkAppVersion(ack);
     });
   });
+  socket.on("app_version", function (ack) {
+    window.checkAppVersion(ack);
+  });
 
   socket.on("queue_update", function (state) {
     if (state.location !== window.LOCATION_SLUG) return;

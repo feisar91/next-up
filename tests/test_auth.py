@@ -4,7 +4,7 @@ from tests.conftest import kiosk_url, login
 
 
 def test_staff_dashboard_requires_login(client, locations):
-    resp = client.get("/staff/launceston")
+    resp = client.get("/staff/main-street")
     assert resp.status_code == 302
     assert "/login" in resp.headers["Location"]
 
@@ -22,38 +22,38 @@ def test_login_lands_on_location_picker(client, barber):
 
 def test_location_picker_highlights_default_location(client, barber):
     resp = login(client, barber["username"], barber["password"])
-    assert b"Continue to Launceston" in resp.data
+    assert b"Continue to Main Street" in resp.data
 
 
 def test_barber_without_default_sees_plain_location_list(client, floating_barber, locations):
     resp = login(client, floating_barber["username"], floating_barber["password"])
     assert b"Continue to" not in resp.data
-    assert b"Launceston" in resp.data and b"Kings Meadows" in resp.data
+    assert b"Main Street" in resp.data and b"Riverside" in resp.data
 
 
 def test_choosing_a_location_reaches_its_dashboard(client, barber, locations):
     login(client, barber["username"], barber["password"])
     resp = client.post(
-        "/staff/choose-location", data={"location_id": locations["kings-meadows"]}, follow_redirects=True
+        "/staff/choose-location", data={"location_id": locations["riverside"]}, follow_redirects=True
     )
     assert resp.status_code == 200
-    assert b"Kings Meadows" in resp.data
+    assert b"Riverside" in resp.data
 
 
 def test_any_active_barber_can_access_any_location_dashboard(app, client, locations, barber, other_location_barber):
     # Barbers pick their working location at login rather than being locked to one account-wide location.
     login(client, barber["username"], barber["password"])
-    resp = client.get("/staff/kings-meadows")
+    resp = client.get("/staff/riverside")
     assert resp.status_code == 200
 
 
 def test_any_active_barber_can_act_on_any_location_queue_entry(app, client, locations, barber, other_location_barber):
-    client.post(kiosk_url(app, "kings-meadows"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
+    client.post(kiosk_url(app, "riverside"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
     with app.app_context():
         entry_id = QueueEntry.query.filter_by(customer_name="Jamie").first().id
 
     login(client, barber["username"], barber["password"])
-    resp = client.post(f"/staff/kings-meadows/call/{entry_id}", follow_redirects=True)
+    resp = client.post(f"/staff/riverside/call/{entry_id}", follow_redirects=True)
     assert resp.status_code == 200
 
     with app.app_context():
@@ -72,14 +72,14 @@ def test_profile_updates_default_location(app, client, barber, locations):
     login(client, barber["username"], barber["password"])
     resp = client.post(
         "/staff/profile",
-        data={"form_name": "profile", "name": "Alex", "default_location_id": locations["kings-meadows"]},
+        data={"form_name": "profile", "name": "Alex", "default_location_id": locations["riverside"]},
         follow_redirects=True,
     )
     assert resp.status_code == 200
 
     with app.app_context():
         barber_obj = db.session.get(Barber, barber["id"])
-        assert barber_obj.default_location_id == locations["kings-meadows"]
+        assert barber_obj.default_location_id == locations["riverside"]
 
 
 def test_profile_can_clear_default_location(app, client, barber):
@@ -99,7 +99,7 @@ def test_profile_saves_name_and_default_location_together(app, client, barber, l
     login(client, barber["username"], barber["password"])
     resp = client.post(
         "/staff/profile",
-        data={"form_name": "profile", "name": "Alexander", "default_location_id": locations["kings-meadows"]},
+        data={"form_name": "profile", "name": "Alexander", "default_location_id": locations["riverside"]},
         follow_redirects=True,
     )
 
@@ -107,20 +107,20 @@ def test_profile_saves_name_and_default_location_together(app, client, barber, l
     with app.app_context():
         barber_obj = db.session.get(Barber, barber["id"])
         assert barber_obj.name == "Alexander"
-        assert barber_obj.default_location_id == locations["kings-meadows"]
+        assert barber_obj.default_location_id == locations["riverside"]
 
 
 def test_profile_blank_name_saves_nothing(app, client, barber, locations):
     login(client, barber["username"], barber["password"])
     client.post(
         "/staff/profile",
-        data={"form_name": "profile", "name": "  ", "default_location_id": locations["kings-meadows"]},
+        data={"form_name": "profile", "name": "  ", "default_location_id": locations["riverside"]},
     )
 
     with app.app_context():
         barber_obj = db.session.get(Barber, barber["id"])
         assert barber_obj.name == "Alex"
-        assert barber_obj.default_location_id == locations["launceston"]
+        assert barber_obj.default_location_id == locations["main-street"]
 
 
 def test_profile_self_service_password_change(app, client, barber):
@@ -261,7 +261,7 @@ def test_logo_links_to_staff_landing_when_authenticated(client, barber):
     assert b'href="/staff" class="brand-link"' in resp.data
 
 
-def test_logo_links_to_index_when_anonymous(client):
+def test_logo_links_to_index_when_anonymous(client, barber):
     resp = client.get("/login")
     assert b'href="/" class="brand-link"' in resp.data
 
@@ -308,7 +308,7 @@ def test_barber_can_change_their_display_name(app, client, barber):
 def test_nav_has_a_queue_link_marked_current_on_the_dashboard(client, locations, barber):
     login(client, barber["username"], barber["password"])
 
-    dashboard = client.get("/staff/launceston").data.decode()
+    dashboard = client.get("/staff/main-street").data.decode()
     assert '<a href="/staff" aria-current="page">Queue</a>' in dashboard
 
     profile = client.get("/staff/profile").data.decode()
@@ -318,15 +318,15 @@ def test_nav_has_a_queue_link_marked_current_on_the_dashboard(client, locations,
 
 def test_queue_link_returns_to_the_current_location(client, locations, barber):
     login(client, barber["username"], barber["password"])
-    client.get("/staff/kings-meadows")
+    client.get("/staff/riverside")
     client.get("/staff/profile")
 
     resp = client.get("/staff")
     assert resp.status_code == 302
-    assert resp.headers["Location"].endswith("/staff/kings-meadows")
+    assert resp.headers["Location"].endswith("/staff/riverside")
 
 
-def test_home_page_shows_log_in_when_logged_out(client, locations):
+def test_home_page_shows_log_in_when_logged_out(client, locations, barber):
     resp = client.get("/")
     assert resp.status_code == 200
     assert b"Staff Log In" in resp.data
@@ -334,12 +334,12 @@ def test_home_page_shows_log_in_when_logged_out(client, locations):
 
 def test_home_page_sends_a_logged_in_barber_to_their_queue(client, locations, barber):
     login(client, barber["username"], barber["password"])
-    client.get("/staff/launceston")
+    client.get("/staff/main-street")
 
     resp = client.get("/")
     assert resp.status_code == 302
     assert resp.headers["Location"].endswith("/staff")
-    assert client.get("/", follow_redirects=True).request.path == "/staff/launceston"
+    assert client.get("/", follow_redirects=True).request.path == "/staff/main-street"
 
 
 def test_home_page_shows_log_in_after_logging_out(client, locations, barber):

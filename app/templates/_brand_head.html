@@ -1,0 +1,10 @@
+{# The shop's favicon and colours (app/branding.py). Include after the stylesheets. #}
+<link rel="icon" type="image/png" sizes="32x32" href="{{ brand.icon_url(32) }}">
+<link rel="icon" type="image/png" sizes="16x16" href="{{ brand.icon_url(16) }}">
+<style>
+  :root {
+    {%- for name, value in brand.css_vars().items() %}
+    {{ name }}: {{ value }};
+    {%- endfor %}
+  }
+</style>

@@ -1,81 +1,115 @@
 import os
 import secrets
+from pathlib import Path
 
 import click
 
-from app import audit, db
+from app import audit, branding, db
 from app.login_sessions import end_all_sessions
-from app.models import MIN_PASSWORD_LENGTH, Barber, Location
-
-REAL_LOCATIONS = [
-    {"name": "Launceston", "slug": "launceston", "address": "George St, Launceston TAS"},
-    {"name": "Kings Meadows", "slug": "kings-meadows", "address": "Kings Meadows TAS"},
-    {"name": "Youngtown", "slug": "youngtown", "address": "Youngtown TAS"},
-]
-
-
-def ensure_locations():
-    for loc in REAL_LOCATIONS:
-        if not Location.query.filter_by(slug=loc["slug"]).first():
-            db.session.add(Location(**loc))
-    db.session.commit()
-    return Location.query.filter_by(slug="launceston").first()
-
+from app.models import MIN_PASSWORD_LENGTH, Barber
 
 def register_cli(app):
-    @app.cli.command("seed")
-    @click.option("--admin-password", default="changeme", help="Password for the bootstrap admin login.")
-    def seed(admin_password):
-        """Create the 3 real locations and one bootstrap admin barber login."""
-        launceston = ensure_locations()
+    @app.cli.command("seed-demo")
+    @click.option("--password", default="demo-password", show_default=True, help="Password for every demo login.")
+    def seed_demo_command(password):
+        """Fill an empty database with a made-up shop to try the app out (see app/demo.py).
 
-        if not Barber.query.filter_by(username="admin").first():
-            admin = Barber(
-                name="Admin",
-                username="admin",
-                default_location_id=launceston.id,
-                is_admin=True,
-            )
-            admin.set_password(admin_password)
-            db.session.add(admin)
-            db.session.commit()
-            click.echo(
-                f"Created locations and bootstrap admin login (username: admin, password: {admin_password})"
-            )
-        else:
-            click.echo("Locations ensured. Admin login already existed.")
+        Creates two locations, an admin (dana) and five barbers, opening hours, a few
+        weeks of past visits for the Metrics page and a live queue for today.
+        """
+        from app.demo import DemoError, seed_demo
+
+        if len(password) < MIN_PASSWORD_LENGTH:
+            raise click.ClickException(f"Password must be at least {MIN_PASSWORD_LENGTH} characters.")
+        try:
+            counts = seed_demo(password)
+        except DemoError as error:
+            raise click.ClickException(str(error)) from None
+        click.echo(
+            f"Created a demo shop with {counts['locations']} locations, {counts['barbers']} logins "
+            f"and {counts['visits']} visits. Log in as 'dana' (admin) or 'marco' (barber) "
+            f"with the password '{password}'."
+        )
 
     @app.cli.command("bootstrap")
     def bootstrap():
-        """First-run setup: if no logins exist yet, create the locations and an admin login.
+        """First-run setup, run on every container start. Does nothing once any login exists.
 
-        Uses $ADMIN_PASSWORD if set, otherwise generates a random password. Either way the
-        admin must change it on first login. Does nothing once any login exists.
+        Normally the owner creates the admin login in the browser (/setup). For an
+        unattended install, set $ADMIN_PASSWORD and this creates an `admin` login with
+        it instead, to be changed on first login. Creates no locations either way.
         """
         if Barber.query.first():
             return
 
-        launceston = ensure_locations()
-        password = os.environ.get("ADMIN_PASSWORD") or secrets.token_urlsafe(12)
+        banner = "=" * 60
+        password = os.environ.get("ADMIN_PASSWORD")
+        if not password:
+            click.echo(
+                f"\n{banner}\n"
+                f"  No admin login yet. Open the app in your browser to create one.\n"
+                f"  Until you do, anyone who can reach the app can create it,\n"
+                f"  so do it now.\n"
+                f"{banner}\n"
+            )
+            return
+        if len(password) < MIN_PASSWORD_LENGTH:
+            raise click.ClickException(f"ADMIN_PASSWORD must be at least {MIN_PASSWORD_LENGTH} characters.")
+
         admin = Barber(
             name="Admin",
             username="admin",
-            default_location_id=launceston.id,
             is_admin=True,
             must_change_password=True,
         )
         admin.set_password(password)
         db.session.add(admin)
         db.session.commit()
+        audit.record("setup.first_admin", "Created the first admin login, Admin (admin), from ADMIN_PASSWORD")
 
-        banner = "=" * 60
         click.echo(
             f"\n{banner}\n"
-            f"  First-run setup complete - created the 3 locations.\n"
-            f"  Admin login:  username: admin   password: {password}\n"
-            f"  You'll be asked to change this password on first login.\n"
+            f"  Created the admin login (username: admin) with the password\n"
+            f"  from ADMIN_PASSWORD. You'll be asked to change it on first login.\n"
             f"{banner}\n"
         )
+
+    @app.cli.command("set-branding")
+    @click.option("--name", help="Shop name.")
+    @click.option("--dark", help="Dark colour, e.g. '#1f2933'.")
+    @click.option("--accent", help="Accent colour, e.g. '#0d9488'.")
+    @click.option("--logo", type=click.Path(exists=True, dir_okay=False, path_type=Path), help="Logo image file.")
+    @click.option("--icon", type=click.Path(exists=True, dir_okay=False, path_type=Path), help="Icon image file.")
+    @click.option("--remove-logo", is_flag=True, help="Remove the logo.")
+    @click.option("--remove-icon", is_flag=True, help="Remove the icon.")
+    def set_branding(name, dark, accent, logo, icon, remove_logo, remove_icon):
+        """Set the shop name, colours, logo or icon (same as Admin > Branding).
+
+        Anything not given is left as it is.
+        """
+        try:
+            if name is not None or dark is not None or accent is not None:
+                current = branding.get_brand()
+                changes = branding.update_identity(
+                    current.name if name is None else name,
+                    current.dark if dark is None else dark,
+                    current.accent if accent is None else accent,
+                )
+                if changes:
+                    summary = branding.change_summary(changes)
+                    audit.record("settings.branding", summary)
+                    click.echo(summary + ".")
+            for kind, path, remove in ((branding.LOGO, logo, remove_logo), (branding.ICON, icon, remove_icon)):
+                label = branding.ASSET_LABELS[kind]
+                if path:
+                    branding.save_asset(kind, path.read_bytes())
+                    audit.record(f"settings.{kind}", f"Uploaded a new {label}")
+                    click.echo(f"Saved the {label} from {path}.")
+                elif remove and branding.remove_asset(kind):
+                    audit.record(f"settings.{kind}", f"Removed the {label}")
+                    click.echo(f"Removed the {label}.")
+        except branding.BrandingError as error:
+            raise click.ClickException(str(error)) from None
 
     @app.cli.command("reset-admin-password")
     @click.option("--username", default="admin", show_default=True, help="Admin login to reset.")

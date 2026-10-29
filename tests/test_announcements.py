@@ -13,7 +13,7 @@ LATE_EVENING = datetime(2026, 9, 30, 23, 30, tzinfo=HOBART).astimezone(timezone.
 MIDNIGHT = datetime(2026, 10, 1, 0, 0, tzinfo=HOBART).astimezone(timezone.utc)
 
 
-def _location(slug="launceston"):
+def _location(slug="main-street"):
     return Location.query.filter_by(slug=slug).first()
 
 
@@ -42,7 +42,7 @@ def test_clean_text_makes_one_short_line():
 def test_barber_sets_the_announcement_until_midnight(app, client, locations, barber):
     login(client, barber["username"], barber["password"])
     with patch("app.announcements.utcnow", return_value=LATE_EVENING):
-        client.post("/staff/launceston/announcement", data={"announcement": "  EFTPOS is down - cash only  "})
+        client.post("/staff/main-street/announcement", data={"announcement": "  EFTPOS is down - cash only  "})
 
     with app.app_context():
         location = _location()
@@ -51,7 +51,7 @@ def test_barber_sets_the_announcement_until_midnight(app, client, locations, bar
     assert _logged(app) == [
         (
             "location.announcement_set",
-            'Set the Launceston announcement: "EFTPOS is down - cash only"',
+            'Set the Main Street announcement: "EFTPOS is down - cash only"',
             audit.CATEGORY_BARBER,
         )
     ]
@@ -59,67 +59,67 @@ def test_barber_sets_the_announcement_until_midnight(app, client, locations, bar
 
 def test_announcement_shows_on_the_tv_kiosk_and_dashboard(app, client, locations, barber):
     login(client, barber["username"], barber["password"])
-    client.post("/staff/launceston/announcement", data={"announcement": "Kids' cuts $20 today"})
+    client.post("/staff/main-street/announcement", data={"announcement": "Kids' cuts $20 today"})
 
-    for url in (display_url(app, "launceston"), kiosk_url(app, "launceston"), "/staff/launceston"):
+    for url in (display_url(app, "main-street"), kiosk_url(app, "main-street"), "/staff/main-street"):
         body = client.get(url).data
         assert b"Kids&#39; cuts $20 today" in body, url
-    assert b'id="announcement" >' in client.get(display_url(app, "launceston")).data
+    assert b'id="announcement" >' in client.get(display_url(app, "main-street")).data
     # Only on this location's screens.
-    assert b"Kids&#39; cuts" not in client.get(display_url(app, "kings-meadows")).data
+    assert b"Kids&#39; cuts" not in client.get(display_url(app, "riverside")).data
 
 
 def test_screens_without_an_announcement_hide_it(app, client, locations):
-    assert b'id="announcement" hidden>' in client.get(display_url(app, "launceston")).data
-    assert b'id="announcement" hidden>' in client.get(kiosk_url(app, "launceston")).data
+    assert b'id="announcement" hidden>' in client.get(display_url(app, "main-street")).data
+    assert b'id="announcement" hidden>' in client.get(kiosk_url(app, "main-street")).data
 
 
 def test_announcement_text_is_escaped(app, client, locations, barber):
     login(client, barber["username"], barber["password"])
-    client.post("/staff/launceston/announcement", data={"announcement": "<script>alert(1)</script>"})
-    body = client.get(display_url(app, "launceston")).data
+    client.post("/staff/main-street/announcement", data={"announcement": "<script>alert(1)</script>"})
+    body = client.get(display_url(app, "main-street")).data
     assert b"<script>alert(1)</script>" not in body
     assert b"&lt;script&gt;alert(1)&lt;/script&gt;" in body
 
 
 def test_empty_text_clears_it(app, client, locations, barber):
     login(client, barber["username"], barber["password"])
-    client.post("/staff/launceston/announcement", data={"announcement": "Back at 2 pm"})
-    client.post("/staff/launceston/announcement", data={"announcement": "   "})
+    client.post("/staff/main-street/announcement", data={"announcement": "Back at 2 pm"})
+    client.post("/staff/main-street/announcement", data={"announcement": "   "})
 
     with app.app_context():
         assert _location().announcement is None
         assert _location().announcement_until is None
     assert _logged(app)[-1] == (
         "location.announcement_clear",
-        "Cleared the Launceston announcement",
+        "Cleared the Main Street announcement",
         audit.CATEGORY_BARBER,
     )
-    assert b"Back at 2 pm" not in client.get(display_url(app, "launceston")).data
+    assert b"Back at 2 pm" not in client.get(display_url(app, "main-street")).data
 
 
 def test_saving_the_same_text_again_is_not_logged_twice(app, client, locations, barber):
     login(client, barber["username"], barber["password"])
-    client.post("/staff/launceston/announcement", data={"announcement": "Back at 2 pm"})
-    client.post("/staff/launceston/announcement", data={"announcement": "Back at 2 pm "})
+    client.post("/staff/main-street/announcement", data={"announcement": "Back at 2 pm"})
+    client.post("/staff/main-street/announcement", data={"announcement": "Back at 2 pm "})
     assert len(_logged(app)) == 1
 
 
 def test_admin_sets_an_announcement_from_the_locations_tab(app, client, locations, admin_barber):
     login(client, "morgan", "password123")
     resp = client.post(
-        f"/admin/locations/{locations['kings-meadows']}/announcement",
+        f"/admin/locations/{locations['riverside']}/announcement",
         data={"announcement": "Closing at 3 pm today"},
         follow_redirects=True,
     )
     assert b"until midnight" in resp.data
     assert b'value="Closing at 3 pm today"' in client.get("/admin/").data
     with app.app_context():
-        assert _location("kings-meadows").announcement == "Closing at 3 pm today"
+        assert _location("riverside").announcement == "Closing at 3 pm today"
     assert _logged(app) == [
         (
             "location.announcement_set",
-            'Set the Kings Meadows announcement: "Closing at 3 pm today"',
+            'Set the Riverside announcement: "Closing at 3 pm today"',
             audit.CATEGORY_ADMIN,
         )
     ]
@@ -127,21 +127,21 @@ def test_admin_sets_an_announcement_from_the_locations_tab(app, client, location
 
 def test_barbers_cannot_use_the_admin_route(app, client, locations, barber):
     login(client, barber["username"], barber["password"])
-    client.post(f"/admin/locations/{locations['launceston']}/announcement", data={"announcement": "Hi"})
+    client.post(f"/admin/locations/{locations['main-street']}/announcement", data={"announcement": "Hi"})
     with app.app_context():
         assert _location().announcement is None
 
 
 def test_expired_announcement_is_not_shown(app, client, locations):
     _set_directly(app, "Yesterday's news", utcnow() - timedelta(minutes=1))
-    assert b"Yesterday" not in client.get(display_url(app, "launceston")).data
-    assert b"Yesterday" not in client.get(kiosk_url(app, "launceston")).data
+    assert b"Yesterday" not in client.get(display_url(app, "main-street")).data
+    assert b"Yesterday" not in client.get(kiosk_url(app, "main-street")).data
 
 
 def test_midnight_clears_expired_announcements_only(app, locations):
     _set_directly(app, "Yesterday's news", utcnow() - timedelta(minutes=1))
     with app.app_context():
-        other = _location("kings-meadows")
+        other = _location("riverside")
         other.announcement = "Still today"
         other.announcement_until = utcnow() + timedelta(hours=1)
         db.session.commit()
@@ -151,12 +151,12 @@ def test_midnight_clears_expired_announcements_only(app, locations):
             assert clear_expired_announcements() == 0  # nothing left to do
 
         assert _location().announcement is None
-        assert _location("kings-meadows").announcement == "Still today"
+        assert _location("riverside").announcement == "Still today"
     assert [(c.args[0], c.args[1], c.kwargs["to"]) for c in mock_emit.call_args_list] == [
-        ("announcement", {"location": "launceston", "text": None}, "location-launceston")
+        ("announcement", {"location": "main-street", "text": None}, "location-main-street")
     ]
     assert _logged(app) == [
-        ("location.announcement_expire", "Cleared the Launceston announcement at midnight", audit.CATEGORY_AUTOMATIC)
+        ("location.announcement_expire", "Cleared the Main Street announcement at midnight", audit.CATEGORY_AUTOMATIC)
     ]
 
 
@@ -164,13 +164,13 @@ def test_setting_it_tells_every_screen_at_the_location(app, locations):
     with app.app_context(), patch.object(socketio, "emit") as mock_emit:
         set_announcement(_location(), "Card only today")
     assert [(c.args[0], c.args[1], c.kwargs["to"]) for c in mock_emit.call_args_list] == [
-        ("announcement", {"location": "launceston", "text": "Card only today"}, "location-launceston")
+        ("announcement", {"location": "main-street", "text": "Card only today"}, "location-main-street")
     ]
 
 
 def test_kiosk_confirmation_screen_has_no_announcement(app, client, locations):
     _set_directly(app, "Card only today", utcnow() + timedelta(hours=1))
-    client.post(kiosk_url(app, "launceston"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
-    body = client.get(kiosk_url(app, "launceston")).data
+    client.post(kiosk_url(app, "main-street"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
+    body = client.get(kiosk_url(app, "main-street")).data
     assert b"You're checked in" in body
     assert b"Card only today" not in body

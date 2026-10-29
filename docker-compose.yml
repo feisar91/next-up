@@ -1,11 +1,15 @@
+# Next Up: https://github.com/feisar91/next-up
+# Runs the published image. To build from source instead (development), add
+# docker-compose.dev.yml: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 services:
   app:
-    build: .
+    image: ghcr.io/feisar91/next-up:${NEXT_UP_VERSION:-latest}
     restart: unless-stopped
     environment:
       SECRET_KEY: ${SECRET_KEY:-}
       DATABASE_URL: postgresql://${POSTGRES_USER:-checkin}:${POSTGRES_PASSWORD:-checkin}@postgres:5432/${POSTGRES_DB:-checkin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      TIMEZONE: ${TIMEZONE:-}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
       SESSION_LIFETIME_HOURS: ${SESSION_LIFETIME_HOURS:-12}
       OFF_DUTY_CHECK_SECONDS: ${OFF_DUTY_CHECK_SECONDS:-300}

@@ -25,7 +25,7 @@ def test_admin_can_update_barber_attributes(app, client, admin_barber, barber, l
         data={
             "name": "Alexandra",
             "username": "alexandra",
-            "default_location_id": locations["kings-meadows"],
+            "default_location_id": locations["riverside"],
             "is_admin": "on",
         },
         follow_redirects=True,
@@ -36,7 +36,7 @@ def test_admin_can_update_barber_attributes(app, client, admin_barber, barber, l
         updated = db.session.get(Barber, barber["id"])
         assert updated.name == "Alexandra"
         assert updated.username == "alexandra"
-        assert updated.default_location_id == locations["kings-meadows"]
+        assert updated.default_location_id == locations["riverside"]
         assert updated.is_admin is True
 
 
@@ -89,7 +89,7 @@ def test_admin_overview_tabulates_locations_and_barbers(client, admin_barber, ba
     resp = client.get("/admin/")
     assert resp.status_code == 200
     assert b"<table" in resp.data
-    assert b"Launceston" in resp.data
+    assert b"Main Street" in resp.data
     assert b"Alex" in resp.data
 
 
@@ -109,14 +109,14 @@ def test_metrics_page_loads_for_admin(client, admin_barber):
 
 
 def test_metrics_reflects_completed_cuts(app, client, admin_barber, barber, locations):
-    client.post(kiosk_url(app, "launceston"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
+    client.post(kiosk_url(app, "main-street"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
     login(client, barber["username"], barber["password"])
 
     with app.app_context():
         entry = QueueEntry.query.filter_by(customer_name="Jamie").first()
         entry_id = entry.id
-    client.post(f"/staff/launceston/call/{entry_id}")
-    client.post(f"/staff/launceston/complete/{entry_id}")
+    client.post(f"/staff/main-street/call/{entry_id}")
+    client.post(f"/staff/main-street/complete/{entry_id}")
 
     client.post("/logout")
     login(client, admin_barber["username"], admin_barber["password"])
@@ -136,7 +136,7 @@ def test_metrics_averages_wait_and_service_time(app, client, admin_barber, barbe
     with app.app_context():
         now = datetime.now(timezone.utc)
         entry = QueueEntry(
-            location_id=locations["launceston"],
+            location_id=locations["main-street"],
             customer_name="Timed Customer",
             status=QueueEntry.STATUS_DONE,
             checked_in_at=now - timedelta(minutes=15),
@@ -156,7 +156,7 @@ def test_metrics_averages_wait_and_service_time(app, client, admin_barber, barbe
 
 def test_toggle_location_active_requires_admin(client, barber, locations):
     login(client, barber["username"], barber["password"])
-    resp = client.post(f"/admin/locations/{locations['launceston']}/toggle-active")
+    resp = client.post(f"/admin/locations/{locations['main-street']}/toggle-active")
     assert resp.status_code == 403
 
 
@@ -164,28 +164,28 @@ def test_admin_can_remove_and_restore_a_location(app, client, admin_barber, loca
     login(client, admin_barber["username"], admin_barber["password"])
 
     resp = client.post(
-        f"/admin/locations/{locations['kings-meadows']}/toggle-active", follow_redirects=True
+        f"/admin/locations/{locations['riverside']}/toggle-active", follow_redirects=True
     )
     assert resp.status_code == 200
     with app.app_context():
-        loc = db.session.get(Location, locations["kings-meadows"])
+        loc = db.session.get(Location, locations["riverside"])
         assert loc.active is False
 
     resp = client.post(
-        f"/admin/locations/{locations['kings-meadows']}/toggle-active", follow_redirects=True
+        f"/admin/locations/{locations['riverside']}/toggle-active", follow_redirects=True
     )
     assert resp.status_code == 200
     with app.app_context():
-        loc = db.session.get(Location, locations["kings-meadows"])
+        loc = db.session.get(Location, locations["riverside"])
         assert loc.active is True
 
 
 def test_removed_location_kiosk_and_display_urls_404(app, client, admin_barber, locations):
-    kiosk_link = kiosk_url(app, "kings-meadows")
-    display_link = display_url(app, "kings-meadows")
+    kiosk_link = kiosk_url(app, "riverside")
+    display_link = display_url(app, "riverside")
 
     login(client, admin_barber["username"], admin_barber["password"])
-    client.post(f"/admin/locations/{locations['kings-meadows']}/toggle-active")
+    client.post(f"/admin/locations/{locations['riverside']}/toggle-active")
 
     assert client.get(kiosk_link).status_code == 404
     assert client.get(display_link).status_code == 404
@@ -193,34 +193,34 @@ def test_removed_location_kiosk_and_display_urls_404(app, client, admin_barber, 
 
 def test_removed_location_excluded_from_location_picker(app, client, admin_barber, barber, locations):
     login(client, admin_barber["username"], admin_barber["password"])
-    client.post(f"/admin/locations/{locations['kings-meadows']}/toggle-active")
+    client.post(f"/admin/locations/{locations['riverside']}/toggle-active")
     client.get("/admin/")  # consume the "has been removed" flash so it doesn't leak into the next assertion
     client.post("/logout")
 
     resp = login(client, barber["username"], barber["password"])
-    assert b"Kings Meadows" not in resp.data
+    assert b"Riverside" not in resp.data
 
 
 def test_removed_default_location_is_not_offered_as_one_click_continue(
     app, client, admin_barber, barber, locations
 ):
-    # barber's default is Launceston (see conftest); remove it and make sure the
-    # picker doesn't still offer a dead one-click "Continue to Launceston".
+    # barber's default is Main Street (see conftest); remove it and make sure the
+    # picker doesn't still offer a dead one-click "Continue to Main Street".
     login(client, admin_barber["username"], admin_barber["password"])
-    client.post(f"/admin/locations/{locations['launceston']}/toggle-active")
+    client.post(f"/admin/locations/{locations['main-street']}/toggle-active")
     client.post("/logout")
 
     resp = login(client, barber["username"], barber["password"])
-    assert b"Continue to Launceston" not in resp.data
+    assert b"Continue to Main Street" not in resp.data
 
 
 def test_removing_a_location_does_not_delete_its_historical_queue_entries(
     app, client, admin_barber, barber, locations
 ):
-    client.post(kiosk_url(app, "kings-meadows"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
+    client.post(kiosk_url(app, "riverside"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
 
     login(client, admin_barber["username"], admin_barber["password"])
-    client.post(f"/admin/locations/{locations['kings-meadows']}/toggle-active")
+    client.post(f"/admin/locations/{locations['riverside']}/toggle-active")
 
     with app.app_context():
         assert QueueEntry.query.filter_by(customer_name="Jamie").count() == 1
@@ -228,12 +228,12 @@ def test_removing_a_location_does_not_delete_its_historical_queue_entries(
 
 def test_device_links_tab_excludes_removed_locations(app, client, admin_barber, locations):
     login(client, admin_barber["username"], admin_barber["password"])
-    client.post(f"/admin/locations/{locations['kings-meadows']}/toggle-active")
+    client.post(f"/admin/locations/{locations['riverside']}/toggle-active")
 
     resp = client.get("/admin/")
-    assert b"Kings Meadows" in resp.data  # still listed (as Inactive) in Locations tab
+    assert b"Riverside" in resp.data  # still listed (as Inactive) in Locations tab
     with app.app_context():
-        loc = db.session.get(Location, locations["kings-meadows"])
+        loc = db.session.get(Location, locations["riverside"])
         assert loc.kiosk_token.encode() not in resp.data
 
 
@@ -268,7 +268,7 @@ def test_deleting_a_barber_keeps_their_queue_history_but_clears_the_name_link(
     app, client, admin_barber, barber, locations
 ):
     client.post(
-        kiosk_url(app, "launceston"),
+        kiosk_url(app, "main-street"),
         data={"customer_name": "Jamie", "preferred_barber_id": barber["id"]},
     )
     login(client, barber["username"], barber["password"])
@@ -276,7 +276,7 @@ def test_deleting_a_barber_keeps_their_queue_history_but_clears_the_name_link(
     with app.app_context():
         entry = QueueEntry.query.filter_by(customer_name="Jamie").first()
         entry_id = entry.id
-    client.post(f"/staff/launceston/call/{entry_id}")
+    client.post(f"/staff/main-street/call/{entry_id}")
     client.post("/logout")
 
     login(client, admin_barber["username"], admin_barber["password"])
@@ -292,55 +292,55 @@ def test_deleting_a_barber_keeps_their_queue_history_but_clears_the_name_link(
 
 def test_delete_location_requires_admin(client, barber, locations):
     login(client, barber["username"], barber["password"])
-    resp = client.post(f"/admin/locations/{locations['kings-meadows']}/delete")
+    resp = client.post(f"/admin/locations/{locations['riverside']}/delete")
     assert resp.status_code == 403
 
 
 def test_cannot_delete_an_active_location(app, client, admin_barber, locations):
     login(client, admin_barber["username"], admin_barber["password"])
     resp = client.post(
-        f"/admin/locations/{locations['kings-meadows']}/delete", follow_redirects=True
+        f"/admin/locations/{locations['riverside']}/delete", follow_redirects=True
     )
     assert b"Remove" in resp.data
 
     with app.app_context():
-        assert db.session.get(Location, locations["kings-meadows"]) is not None
+        assert db.session.get(Location, locations["riverside"]) is not None
 
 
 def test_admin_can_delete_a_removed_location_with_no_history(app, client, admin_barber, locations):
     login(client, admin_barber["username"], admin_barber["password"])
-    client.post(f"/admin/locations/{locations['kings-meadows']}/toggle-active")
+    client.post(f"/admin/locations/{locations['riverside']}/toggle-active")
 
     resp = client.post(
-        f"/admin/locations/{locations['kings-meadows']}/delete", follow_redirects=True
+        f"/admin/locations/{locations['riverside']}/delete", follow_redirects=True
     )
     assert resp.status_code == 200
     assert b"permanently deleted" in resp.data
 
     with app.app_context():
-        assert db.session.get(Location, locations["kings-meadows"]) is None
+        assert db.session.get(Location, locations["riverside"]) is None
 
 
 def test_cannot_delete_a_removed_location_with_history(app, client, admin_barber, locations):
-    client.post(kiosk_url(app, "kings-meadows"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
+    client.post(kiosk_url(app, "riverside"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
 
     login(client, admin_barber["username"], admin_barber["password"])
-    client.post(f"/admin/locations/{locations['kings-meadows']}/toggle-active")
+    client.post(f"/admin/locations/{locations['riverside']}/toggle-active")
 
     resp = client.post(
-        f"/admin/locations/{locations['kings-meadows']}/delete", follow_redirects=True
+        f"/admin/locations/{locations['riverside']}/delete", follow_redirects=True
     )
     assert b"historical check-in records" in resp.data
 
     with app.app_context():
-        assert db.session.get(Location, locations["kings-meadows"]) is not None
+        assert db.session.get(Location, locations["riverside"]) is not None
         assert QueueEntry.query.filter_by(customer_name="Jamie").count() == 1
 
 
 def test_deleting_a_location_clears_barbers_who_pointed_to_it(app, client, admin_barber, barber, locations):
     login(client, admin_barber["username"], admin_barber["password"])
-    client.post(f"/admin/locations/{locations['launceston']}/toggle-active")
-    client.post(f"/admin/locations/{locations['launceston']}/delete")
+    client.post(f"/admin/locations/{locations['main-street']}/toggle-active")
+    client.post(f"/admin/locations/{locations['main-street']}/delete")
 
     with app.app_context():
         updated = db.session.get(Barber, barber["id"])

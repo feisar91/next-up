@@ -49,10 +49,10 @@ def test_edit_logs_each_change(app, client, admin_barber, barber, locations):
     login(client, "morgan", "password123")
     client.post(
         f"/admin/barbers/{barber['id']}/edit",
-        data={"name": "Alexander", "username": "alex", "default_location_id": locations["kings-meadows"], "is_admin": "on"},
+        data={"name": "Alexander", "username": "alex", "default_location_id": locations["riverside"], "is_admin": "on"},
     )
     assert _last(app)[2] == (
-        "Edited Alexander: name Alex to Alexander; default location Launceston to Kings Meadows; granted admin access"
+        "Edited Alexander: name Alex to Alexander; default location Main Street to Riverside; granted admin access"
     )
 
 
@@ -60,7 +60,7 @@ def test_edit_without_changes_is_not_logged(app, client, admin_barber, barber, l
     login(client, "morgan", "password123")
     client.post(
         f"/admin/barbers/{barber['id']}/edit",
-        data={"name": "Alex", "username": "alex", "default_location_id": locations["launceston"]},
+        data={"name": "Alex", "username": "alex", "default_location_id": locations["main-street"]},
     )
     assert _summaries(app) == []
 
@@ -70,7 +70,7 @@ def test_barber_actions_are_logged(app, client, admin_barber, barber, locations)
     client.post(f"/admin/barbers/{barber['id']}/reset-password",
                 data={"password": "temp-pass-1", "confirm_password": "temp-pass-1"})
     client.post(f"/admin/barbers/{barber['id']}/toggle-kiosk")
-    client.post(f"/admin/barbers/{barber['id']}/login", data={"location_id": locations["launceston"]})
+    client.post(f"/admin/barbers/{barber['id']}/login", data={"location_id": locations["main-street"]})
     client.post(f"/admin/barbers/{barber['id']}/logout")
     client.post(f"/admin/barbers/{barber['id']}/toggle-active")
     client.post(f"/admin/barbers/{barber['id']}/delete")
@@ -78,7 +78,7 @@ def test_barber_actions_are_logged(app, client, admin_barber, barber, locations)
     assert _summaries(app) == [
         "Reset the password for Alex and logged them out",
         "Hid Alex from the check-in kiosk",
-        "Logged in Alex at Launceston (on duty, no device)",
+        "Logged in Alex at Main Street (on duty, no device)",
         "Logged out Alex and took them off duty",
         "Deactivated Alex",
         "Deleted Alex (alex)",
@@ -95,18 +95,18 @@ def test_refused_actions_are_not_logged(app, client, admin_barber, barber):
 def test_location_and_settings_actions_are_logged(app, client, admin_barber, locations):
     login(client, "morgan", "password123")
     client.post("/admin/locations", data={"name": "Hobart", "slug": "hobart"})
-    client.post(f"/admin/locations/{locations['launceston']}/regenerate-kiosk-token")
-    client.post(f"/admin/locations/{locations['launceston']}/regenerate-display-token")
-    client.post(f"/admin/locations/{locations['kings-meadows']}/toggle-active")
-    client.post(f"/admin/locations/{locations['kings-meadows']}/delete")
+    client.post(f"/admin/locations/{locations['main-street']}/regenerate-kiosk-token")
+    client.post(f"/admin/locations/{locations['main-street']}/regenerate-display-token")
+    client.post(f"/admin/locations/{locations['riverside']}/toggle-active")
+    client.post(f"/admin/locations/{locations['riverside']}/delete")
     client.post("/admin/settings", data={"timezone": "Australia/Melbourne"})
 
     assert _summaries(app) == [
         "Created location Hobart (hobart)",
-        "Regenerated the kiosk link for Launceston",
-        "Regenerated the TV display link for Launceston",
-        "Removed location Kings Meadows",
-        "Deleted location Kings Meadows",
+        "Regenerated the kiosk link for Main Street",
+        "Regenerated the TV display link for Main Street",
+        "Removed location Riverside",
+        "Deleted location Riverside",
         "Changed the timezone from Australia/Hobart to Australia/Melbourne",
     ]
 
@@ -120,12 +120,12 @@ def test_cli_password_reset_is_logged_as_command_line(app, admin_barber):
 
 def test_store_close_and_open_is_logged(app, client, barber, locations):
     login(client, barber["username"], barber["password"])
-    client.post("/staff/launceston/store", data={"closed": "1"})
-    client.post("/staff/launceston/store", data={"closed": "0"})
+    client.post("/staff/main-street/store", data={"closed": "1"})
+    client.post("/staff/main-street/store", data={"closed": "0"})
 
     assert _summaries(app) == [
-        "Closed Launceston to new check-ins",
-        "Opened Launceston to new check-ins",
+        "Closed Main Street to new check-ins",
+        "Opened Main Street to new check-ins",
     ]
     assert _categories(app) == [
         ("location.close", "barber"),
@@ -135,14 +135,14 @@ def test_store_close_and_open_is_logged(app, client, barber, locations):
 
 def test_store_status_unchanged_is_not_logged(app, client, barber, locations):
     login(client, barber["username"], barber["password"])
-    client.post("/staff/launceston/store", data={"closed": "0"})  # already open
+    client.post("/staff/main-street/store", data={"closed": "0"})  # already open
     assert _summaries(app) == []
 
 
 def test_customer_checkin_is_logged_as_customer(app, client, locations):
-    client.post(kiosk_url(app, "launceston"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
+    client.post(kiosk_url(app, "main-street"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
 
-    assert _summaries(app) == ["Jamie checked in at Launceston"]
+    assert _summaries(app) == ["Jamie checked in at Main Street"]
     assert _categories(app) == [("queue.checkin", "customer")]
     with app.app_context():
         entry = AdminAction.query.one()
@@ -151,67 +151,67 @@ def test_customer_checkin_is_logged_as_customer(app, client, locations):
 
 
 def test_group_checkin_logs_each_person_with_the_rest_of_the_group(app, client, locations):
-    client.post(kiosk_url(app, "launceston"), data={"customer_name": ["Dana", "Mia", "Leo"], "preferred_barber_id": ""})
+    client.post(kiosk_url(app, "main-street"), data={"customer_name": ["Dana", "Mia", "Leo"], "preferred_barber_id": ""})
 
     assert sorted(_summaries(app)) == [
-        "Dana checked in at Launceston with Mia and Leo",
-        "Leo checked in at Launceston with Dana and Mia",
-        "Mia checked in at Launceston with Dana and Leo",
+        "Dana checked in at Main Street with Mia and Leo",
+        "Leo checked in at Main Street with Dana and Mia",
+        "Mia checked in at Main Street with Dana and Leo",
     ]
     assert {cat for _, cat in _categories(app)} == {"customer"}
 
 
 def test_queue_actions_are_logged_as_barber_events(app, client, barber, locations):
-    client.post(kiosk_url(app, "launceston"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
+    client.post(kiosk_url(app, "main-street"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
     login(client, barber["username"], barber["password"])
 
     with app.app_context():
         entry_id = QueueEntry.query.filter_by(customer_name="Jamie").first().id
-    client.post(f"/staff/launceston/call/{entry_id}")
-    client.post(f"/staff/launceston/complete/{entry_id}")
-    client.post(f"/staff/launceston/undo/{entry_id}")
+    client.post(f"/staff/main-street/call/{entry_id}")
+    client.post(f"/staff/main-street/complete/{entry_id}")
+    client.post(f"/staff/main-street/undo/{entry_id}")
 
     assert _summaries(app)[1:] == [
-        "Called Jamie to the chair at Launceston",
-        "Completed Jamie at Launceston",
-        "Undid completing Jamie at Launceston",
+        "Called Jamie to the chair at Main Street",
+        "Completed Jamie at Main Street",
+        "Undid completing Jamie at Main Street",
     ]
     assert [cat for _, cat in _categories(app)[1:]] == ["barber", "barber", "barber"]
 
 
 def test_removing_a_customer_is_logged(app, client, barber, locations):
-    client.post(kiosk_url(app, "launceston"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
+    client.post(kiosk_url(app, "main-street"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
     login(client, barber["username"], barber["password"])
     with app.app_context():
         entry_id = QueueEntry.query.filter_by(customer_name="Jamie").first().id
 
-    client.post(f"/staff/launceston/remove/{entry_id}")
+    client.post(f"/staff/main-street/remove/{entry_id}")
 
-    assert _last(app)[1:] == ("queue.remove", "Removed Jamie from the queue at Launceston (no-show)")
+    assert _last(app)[1:] == ("queue.remove", "Removed Jamie from the queue at Main Street (no-show)")
 
 
 def test_break_toggle_is_logged_as_barber_event(app, client, barber, locations):
     login(client, barber["username"], barber["password"])
-    client.get("/staff/launceston")
-    client.post("/staff/launceston/break", data={"on_break": "1"})
-    client.post("/staff/launceston/break", data={"on_break": "1"})  # no change, shouldn't log again
-    client.post("/staff/launceston/break", data={"on_break": "0"})
+    client.get("/staff/main-street")
+    client.post("/staff/main-street/break", data={"on_break": "1"})
+    client.post("/staff/main-street/break", data={"on_break": "1"})  # no change, shouldn't log again
+    client.post("/staff/main-street/break", data={"on_break": "0"})
 
     assert _summaries(app) == [
-        "Alex went on break at Launceston",
-        "Alex came back from break at Launceston",
+        "Alex went on break at Main Street",
+        "Alex came back from break at Main Street",
     ]
 
 
 def test_barber_login_and_logout_are_logged(app, client, barber, locations):
     login(client, barber["username"], barber["password"])
-    client.get("/staff/launceston")
+    client.get("/staff/main-street")
     client.post("/logout")
 
     assert _session_entries(app) == [
         ("Alex", "session.login", "Alex logged in", "barber"),
-        ("Alex", "session.location", "Alex started working at Launceston", "barber"),
-        ("Alex", "session.logout", "Alex logged out and went off duty at Launceston", "barber"),
+        ("Alex", "session.location", "Alex started working at Main Street", "barber"),
+        ("Alex", "session.logout", "Alex logged out and went off duty at Main Street", "barber"),
     ]
 
 
@@ -224,13 +224,13 @@ def test_logout_before_choosing_a_location_is_logged(app, client, barber):
 
 def test_choosing_and_switching_location_is_logged(app, client, barber, locations):
     login(client, barber["username"], barber["password"])
-    client.get("/staff/launceston")
-    client.get("/staff/launceston")  # reloading the dashboard isn't a change
-    client.get("/staff/kings-meadows")
+    client.get("/staff/main-street")
+    client.get("/staff/main-street")  # reloading the dashboard isn't a change
+    client.get("/staff/riverside")
 
     assert [entry for entry in _session_entries(app) if entry[1] == "session.location"] == [
-        ("Alex", "session.location", "Alex started working at Launceston", "barber"),
-        ("Alex", "session.location", "Alex moved from Launceston to Kings Meadows", "barber"),
+        ("Alex", "session.location", "Alex started working at Main Street", "barber"),
+        ("Alex", "session.location", "Alex moved from Main Street to Riverside", "barber"),
     ]
 
 
@@ -268,16 +268,16 @@ def test_barber_profile_change_is_logged(app, client, barber, locations):
     login(client, barber["username"], barber["password"])
     client.post(
         "/staff/profile",
-        data={"form_name": "profile", "name": "Alexander", "default_location_id": locations["kings-meadows"]},
+        data={"form_name": "profile", "name": "Alexander", "default_location_id": locations["riverside"]},
     )
     client.post(  # saving again without changes isn't logged
         "/staff/profile",
-        data={"form_name": "profile", "name": "Alexander", "default_location_id": locations["kings-meadows"]},
+        data={"form_name": "profile", "name": "Alexander", "default_location_id": locations["riverside"]},
     )
 
     assert _categories(app) == [("barber.edit_own_profile", "barber")]
     assert _summaries(app) == [
-        "Alexander updated their profile: name Alex to Alexander; default location Launceston to Kings Meadows"
+        "Alexander updated their profile: name Alex to Alexander; default location Main Street to Riverside"
     ]
 
 
@@ -332,23 +332,23 @@ def test_record_without_request_context_is_cli_category(app):
 
 
 def test_activity_tab_filters_by_category(app, client, admin_barber, locations):
-    client.post(kiosk_url(app, "launceston"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
+    client.post(kiosk_url(app, "main-street"), data={"customer_name": "Jamie", "preferred_barber_id": ""})
     login(client, "morgan", "password123")
     client.post("/admin/locations", data={"name": "Hobart", "slug": "hobart"})
 
     resp = client.get("/admin/?activity_category=customer")
-    assert b"Jamie checked in at Launceston" in resp.data
+    assert b"Jamie checked in at Main Street" in resp.data
     assert b"Created location Hobart" not in resp.data
 
 
 def test_activity_tab_filters_by_event_type(app, client, admin_barber, locations):
     login(client, "morgan", "password123")
     client.post("/admin/locations", data={"name": "Hobart", "slug": "hobart"})
-    client.post(f"/admin/locations/{locations['kings-meadows']}/toggle-active")
+    client.post(f"/admin/locations/{locations['riverside']}/toggle-active")
 
     resp = client.get("/admin/?activity_action=location.create")
     assert b"Created location Hobart" in resp.data
-    assert b"Removed location Kings Meadows" not in resp.data
+    assert b"Removed location Riverside" not in resp.data
 
 
 def test_activity_tab_filters_by_who(app, client, admin_barber, barber, locations):
@@ -356,13 +356,13 @@ def test_activity_tab_filters_by_who(app, client, admin_barber, barber, location
     client.post(f"/admin/barbers/{barber['id']}/toggle-kiosk")
     client.post("/logout")
     login(client, barber["username"], barber["password"])
-    client.get("/staff/launceston")
-    client.post("/staff/launceston/break", data={"on_break": "1"})
+    client.get("/staff/main-street")
+    client.post("/staff/main-street/break", data={"on_break": "1"})
     client.post("/logout")
     login(client, "morgan", "password123")
 
     resp = client.get("/admin/?activity_who=Alex")
-    assert b"Alex went on break at Launceston" in resp.data
+    assert b"Alex went on break at Main Street" in resp.data
     assert b"Hid Alex from the check-in kiosk" not in resp.data
 
 
