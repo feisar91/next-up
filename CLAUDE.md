@@ -71,10 +71,12 @@ Customer flow: kiosk check-in creates a `QueueEntry` (`waiting`), a barber calls
 ## Running and testing
 
 ```bash
-docker compose up -d --build                   # app on http://localhost:8000
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build   # build from this checkout, app on http://localhost:8000
 # then open the app in a browser to create the admin login
 docker compose exec app python -m pytest       # tests
 ```
+
+`docker-compose.yml` alone runs the published image (`ghcr.io/feisar91/next-up`, version from `NEXT_UP_VERSION`); `docker-compose.dev.yml` adds `build: .`. Images are built by [.github/workflows/publish.yml](.github/workflows/publish.yml): pushes to `main` publish `:main`, tags `vX.Y.Z` publish `:X.Y.Z`, `:X.Y`, `:X`, `:latest` and a GitHub release carrying `docker-compose.yml` and `env.example` (what the install docs download).
 
 Tests in [tests/](tests/) use `config.TestConfig` with in-memory SQLite, so they never touch Postgres. Fixtures in [tests/conftest.py](tests/conftest.py) provide `app`, `client`, `locations`, and `barber`.
 

@@ -17,6 +17,8 @@ PORT=8090
 BASE="http://127.0.0.1:$PORT"
 
 export COMPOSE_PROJECT_NAME=nextup-docs
+# Build from this checkout, so the pictures show the code you're about to release.
+export COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml
 export APP_PORT="127.0.0.1:$PORT"
 export SECRET_KEY=docs-screenshots-only
 export SESSION_COOKIE_SECURE=false

@@ -27,9 +27,9 @@ Choose an address like `queue.yourshop.com` and add a DNS **A record** for it, p
 ## 3. Download Next Up and set it up
 
 ```bash
-git clone https://github.com/{{ site.repository }}.git
-cd next-up
-cp .env.example .env
+mkdir next-up && cd next-up
+curl -fsSLO https://github.com/{{ site.repository }}/releases/latest/download/docker-compose.yml
+curl -fsSL -o .env https://github.com/{{ site.repository }}/releases/latest/download/env.example
 ```
 
 Edit `.env` and set at least these:
@@ -47,7 +47,7 @@ BEHIND_PROXY=true
 Then start it:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
 ## 4. Add HTTPS
@@ -94,6 +94,7 @@ Everything is set in `.env`, and every setting is optional. After changing it, r
 
 | Setting | Default | What it does |
 |---|---|---|
+| `NEXT_UP_VERSION` | `latest` | Which release to run. `1.0` keeps you on the newest 1.0.x, `1.0.0` on exactly that one. |
 | `TIMEZONE` | `UTC` | The timezone to use until an admin picks one on the Settings tab. |
 | `APP_PORT` | `8000` | The port the app listens on. `127.0.0.1:8000` keeps it private to the server. |
 | `BEHIND_PROXY` | `false` | Set to `true` behind Caddy or Nginx, so login limits see each visitor's real address. |
