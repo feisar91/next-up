@@ -91,7 +91,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 
 The app is then on `http://localhost:8000`. On every start the app container waits for Postgres and runs `flask db upgrade`. A new install has no logins and no locations: open the app in your browser and it asks you to **create the admin login**, choosing your own name, username and password. Until that's done anyone who can reach the app could create it, so do it as soon as the app is up (or set `ADMIN_PASSWORD` in `.env` for an unattended install: an `admin` login is then created with that password, to be changed on first login).
 
-After that the Admin page shows a **Getting Started** checklist: name your shop and pick its colours and logo, set your timezone, add your locations and barbers, and open the kiosk and TV links on their devices. The last step ticks itself as soon as a kiosk and a TV have connected. If no `SECRET_KEY` is provided, one is generated on first start and kept in the `checkin_app_data` volume.
+After that the Admin page shows a **Getting Started** checklist: name your shop and pick its colours and logo, set your timezone, add your locations and barbers, and open the kiosk and TV links on their devices. The last step ticks itself as soon as a kiosk and a TV have connected. If no `SECRET_KEY` is provided, one is generated on first start and kept in the `next-up-app-data` volume.
 
 To override any defaults (port, Postgres password, timezone, your own `SECRET_KEY`), copy `.env.example` to `.env` and uncomment what you need.
 
@@ -104,14 +104,14 @@ docker compose logs -f app                 # app logs
 docker compose exec app flask <command>    # run any Flask CLI command (e.g. flask set-branding --help)
 docker compose exec app flask reset-admin-password   # locked out? prints a new temporary admin password
 docker compose pull && docker compose up -d   # upgrade to the newest release
-docker compose down                        # stop (data is kept in the checkin_pg_data volume)
+docker compose down                        # stop (data is kept in the next-up-postgres-data volume)
 ```
 
 ### Upgrading an install from before branding
 
 Installs set up before Next Up had branding keep their locations, logins and history. The upgrade also keeps them on the timezone they were using (`Australia/Hobart`, the old default) unless one was already chosen. Until you set your name, colours and logo under Admin > Branding (or with `flask set-branding`), the screens show the Next Up defaults, so do that straight after upgrading.
 
-Postgres isn't published to the host; it's only reachable by the app container. Its data lives in the `checkin_pg_data` volume. Note that `POSTGRES_USER`/`POSTGRES_PASSWORD` only take effect when that volume is first created - changing them later won't change the password on an existing database.
+Postgres isn't published to the host; it's only reachable by the app container. Its data lives in the `next-up-postgres-data` volume. Note that `POSTGRES_USER`/`POSTGRES_PASSWORD` only take effect when that volume is first created - changing them later won't change the password on an existing database.
 
 ### Tests
 

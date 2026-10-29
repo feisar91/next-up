@@ -25,4 +25,5 @@ docker run --rm -it -p 4000:4000 -v "$PWD/docs:/srv/jekyll" jekyll/jekyll:4.2.2 
   jekyll serve --host 0.0.0.0 --baseurl ""
 ```
 
-then open http://localhost:4000.
+then open http://localhost:4000. Page edits show up when you reload, but changes to
+`_config.yml` (such as the repository name) need the preview restarted.
