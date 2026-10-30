@@ -167,6 +167,9 @@ def create_app(config_class=Config):
             return redirect(url_for("staff.landing"))
         if needs_first_admin():
             return redirect(url_for("auth.setup"))
+        # The public demo's welcome and one-click logins are on the login page.
+        if app.config["DEMO_MODE"]:
+            return redirect(url_for("auth.login"))
         return render_template("index.html")
 
     return app

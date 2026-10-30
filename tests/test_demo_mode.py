@@ -172,7 +172,7 @@ def test_demo_reset_command_needs_demo_mode(app):
 def test_login_page_offers_one_click_logins_and_screen_links(demo_app, demo_client):
     page = demo_client.get("/login").data.decode()
 
-    assert "Log in as Dana Wells, the owner" in page
+    assert "Dana Wells, the owner" in page
     assert 'name="username" value="marco"' in page
     assert _kiosk() in page
     assert f"/display/harbour-lane/{_location().display_token}" in page
@@ -185,9 +185,15 @@ def test_one_click_login_works(demo_app, demo_client):
     assert "/login" not in response.headers["Location"]
 
 
-def test_home_page_shows_the_demo_intro(demo_app, demo_client):
-    page = demo_client.get("/").data.decode()
-    assert "Log in as Marco, a barber" in page
+def test_home_page_goes_to_the_demo_login_page(demo_app, demo_client):
+    response = demo_client.get("/")
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/login")
+
+
+def test_demo_login_page_has_the_username_form_too(demo_app, demo_client):
+    page = demo_client.get("/login").data.decode()
+    assert 'id="username"' in page and 'id="password"' in page
 
 
 def test_kiosk_and_tv_show_the_demo_label(demo_app, demo_client):

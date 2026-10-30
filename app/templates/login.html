@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Log in - {{ brand.name }}{% endblock %}
+{% block container_class %}{% if demo %}container-demo{% endif %}{% endblock %}
+
 {% block content %}
-  {% if demo %}{% include "_demo_intro.html" %}{% endif %}
-  <div class="card" style="max-width:420px;margin:2rem auto;">
-    <h1 style="text-align:center;">Staff Log In</h1>
+  {% macro login_form() %}
     {% with setup=False %}{% include "_cookie_warning.html" %}{% endwith %}
-    <form method="post">
+    <form method="post" action="{{ url_for('auth.login') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field">
         <label for="username">Username</label>
-        <input type="text" id="username" name="username" value="{{ username or '' }}" autocomplete="username" required autofocus>
+        <input type="text" id="username" name="username" value="{{ username or '' }}" autocomplete="username" required{% if not demo %} autofocus{% endif %}>
       </div>
       <div class="field">
         <label for="password">Password</label>
@@ -17,5 +17,61 @@
       </div>
       <button type="submit" class="btn" style="width:100%;">Log In</button>
     </form>
-  </div>
+  {% endmacro %}
+
+  {% if demo %}
+    {# The public demo (app/demo_mode.py): what it is, one-click logins, and the shop screens. #}
+    <div class="demo-layout">
+      <section class="card demo-intro">
+        <h1>Try {{ brand.name }}</h1>
+        <p>
+          This is a made-up barber shop with two locations, a queue of customers and five weeks of history.
+          Log in as the owner to see the admin pages and metrics, or as a barber to work the queue.
+        </p>
+        <p class="demo-note">Everyone trying the demo shares it, and it goes back to how it started every hour.</p>
+      </section>
+
+      <section class="card demo-login">
+        <h2>Log in</h2>
+        <div class="demo-logins">
+          {% for username, name, role in demo.featured_logins %}
+            <form method="post" action="{{ url_for('auth.login') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="username" value="{{ username }}">
+              <input type="hidden" name="password" value="{{ demo.password }}">
+              <button type="submit" class="btn{% if not loop.first %} btn-secondary{% endif %}">{{ name }}, {{ role }}</button>
+            </form>
+          {% endfor %}
+        </div>
+        <p class="demo-divider"><span>or with a username</span></p>
+        {{ login_form() }}
+        <p class="demo-note demo-login-hint">
+          The other barbers are {{ demo.other_usernames | join(", ") }}. Every login uses the password
+          <code>{{ demo.password }}</code>.
+        </p>
+      </section>
+
+      {% set demo_locations = demo.locations() %}
+      {% if demo_locations %}
+        <section class="card demo-screens-card">
+          <h2>Shop screens</h2>
+          <p class="demo-note">Open these in other tabs, or on your phone, and watch them change as you work the queue.</p>
+          <ul class="demo-screens">
+            {% for location in demo_locations %}
+              <li>
+                <strong>{{ location.name }}</strong>
+                <a href="{{ url_for('kiosk.check_in', location_slug=location.slug, token=location.kiosk_token) }}" target="_blank" rel="noopener">Check-in kiosk</a>
+                <a href="{{ url_for('display.show', location_slug=location.slug, token=location.display_token) }}" target="_blank" rel="noopener">TV display</a>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="card" style="max-width:420px;margin:2rem auto;">
+      <h1 style="text-align:center;">Staff Log In</h1>
+      {{ login_form() }}
+    </div>
+  {% endif %}
 {% endblock %}
