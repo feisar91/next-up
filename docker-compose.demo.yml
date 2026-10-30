@@ -1,6 +1,7 @@
 # The public demo of Next Up (docs/technical/public-demo.md): the made-up shop
 # from `flask seed-demo`, open to anyone and erased and loaded again every hour.
-#   docker compose -f docker-compose.demo.yml up -d
+# Download it into a folder of its own as docker-compose.yml, then: docker compose up -d
+# (From this checkout instead: docker compose -f docker-compose.demo.yml up -d)
 # It has its own project, container and volume names, and doesn't read the
 # usual variables, so it can sit next to a real install without touching it.
 name: next-up-demo

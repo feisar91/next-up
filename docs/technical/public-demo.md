@@ -32,18 +32,20 @@ You need a server with Docker and a web address for the demo. These steps use Ca
 
 **1. Point the address at the server.** Add a DNS A record for the demo's address (for example `demo.yourdomain.com`) pointing at the server's IP address.
 
-**2. Download the demo's Compose file** into its own folder:
+**2. Download the demo's Compose file** into its own folder, saved as `docker-compose.yml` so the usual `docker compose` commands find it:
 
 ```bash
 mkdir next-up-demo && cd next-up-demo
-curl -fsSLO https://raw.githubusercontent.com/{{ site.repository }}/main/docker-compose.demo.yml
+curl -fsSL -o docker-compose.yml https://raw.githubusercontent.com/{{ site.repository }}/main/docker-compose.demo.yml
 ```
+
+Keep it out of a real install's folder, which already has a `docker-compose.yml`.
 
 **3. Start it:**
 
 ```bash
-docker compose -f docker-compose.demo.yml up -d
-docker compose -f docker-compose.demo.yml logs app
+docker compose up -d
+docker compose logs app
 ```
 
 The log should end with `Loaded a fresh copy of the demo shop.` and Gunicorn starting. The app listens on `127.0.0.1:8010`, so only Caddy can reach it.
@@ -60,7 +62,7 @@ Open the address in a browser. You should see the demo's welcome page.
 
 ## Settings
 
-Set these in a `.env` file next to `docker-compose.demo.yml`. They have their own names, so a real install's `.env` doesn't affect the demo.
+Set these in a `.env` file in the demo's folder. They have their own names, so a real install's `.env` doesn't affect the demo.
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -71,6 +73,8 @@ Set these in a `.env` file next to `docker-compose.demo.yml`. They have their ow
 
 ## Looking after it
 
-- **Reset it now:** `docker compose -f docker-compose.demo.yml exec app flask demo-reset`
-- **Update it:** `docker compose -f docker-compose.demo.yml pull && docker compose -f docker-compose.demo.yml up -d`. Each start loads a fresh demo.
-- **Remove it:** `docker compose -f docker-compose.demo.yml down --volumes`. This only removes the demo's own containers and volumes.
+Run these in the demo's folder:
+
+- **Reset it now:** `docker compose exec app flask demo-reset`
+- **Update it:** `docker compose pull && docker compose up -d`. Each start loads a fresh demo.
+- **Remove it:** `docker compose down --volumes`. This only removes the demo's own containers and volumes.
