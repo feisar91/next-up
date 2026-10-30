@@ -38,7 +38,11 @@ body {
   overflow-x: hidden;
 }
 
+/* With overflow set on both, body (not the window) is the page's scroller.
+   position: relative keeps absolute children (.visually-hidden) inside it;
+   otherwise they overflow html and add a second scrollbar. */
 body {
+  position: relative;
   background: var(--color-bg);
   color: var(--brand-dark);
   font-family: var(--font-body);
