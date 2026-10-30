@@ -2,11 +2,13 @@
   <img src="docs/assets/img/hero.webp" alt="A barber's phone, the shop TV and the check-in tablet, all showing the same queue">
 </p>
 
-<p align="center"><strong><a href="https://feisar91.github.io/next-up/">Guides, screenshots and a demo video</a></strong></p>
+<p align="center"><strong><a href="https://upnext.demo.feisar.xyz">Try the live demo</a> · <a href="https://feisar91.github.io/next-up/">Guides, screenshots and a demo video</a></strong></p>
 
 # Next Up
 
 Walk-in check-in for barber shops. Customers put their name in on a tablet by the door, the queue shows on the shop TV, and barbers call people up from their phones. It runs one shop or several, with your own name, colours and logo, on a server you control.
+
+To try it without installing anything, open the [live demo](https://upnext.demo.feisar.xyz): a made-up shop you can log in to as the owner or a barber, with a kiosk and TV to play with. Everyone shares it, and it starts again every hour.
 
 ## Quick start
 
