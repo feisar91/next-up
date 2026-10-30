@@ -643,10 +643,12 @@ label {
   }
 }
 
+/* "backwards", not "both": a transform left on after the animation would make
+   these boxes the reference for position: fixed children (the heatmap tooltip). */
 .container,
 .kiosk-screen,
 .display-screen {
-  animation: fadeIn 0.35s ease both;
+  animation: fadeIn 0.35s ease backwards;
 }
 
 /* --- Admin tables --- */
@@ -1138,7 +1140,7 @@ label {
 }
 
 .tab-panel {
-  animation: fadeIn 0.25s ease both;
+  animation: fadeIn 0.25s ease backwards;
 }
 
 /* --- Printing (metrics "Print / Save as PDF") --- */
