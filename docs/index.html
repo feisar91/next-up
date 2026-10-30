@@ -8,6 +8,7 @@ home: true
     <p>Customers put their name in on a tablet by the door. The queue shows on the TV. Barbers call the next person up from their phone. It replaces the paper sign-in sheet, and it's free.</p>
     <div class="hero-actions">
       <a class="button" href="{{ '/getting-started/' | relative_url }}">Set it up</a>
+      {% if site.demo_url %}<a class="button button-quiet" href="{{ site.demo_url }}">Try the live demo</a>{% endif %}
       <a class="button button-quiet" href="#video">Watch it work</a>
     </div>
     <img class="hero-image" src="{{ '/assets/img/hero.webp' | relative_url }}" alt="A barber's phone, the shop TV and the check-in tablet, all showing the same queue">

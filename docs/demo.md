@@ -1,11 +1,17 @@
 ---
 title: Try the demo shop
-lead: Load a made-up shop with barbers, a queue and five weeks of history, so you can try every screen before setting up your own.
+lead: A made-up shop with barbers, a queue and five weeks of history, so you can try every screen before setting up your own.
 next: { title: "For barbers", url: /guides/barbers/ }
 ---
 
 The demo is a pretend business called Harbour Lane Barbers, with two shops, an owner, five barbers and about 1,200 past visits. It's the same data used for the pictures in these guides.
+{% if site.demo_url %}
+## Try it online
 
+The quickest way is the [live demo]({{ site.demo_url }}). There's nothing to install: log in with one click as the owner or a barber, and open the kiosk and TV from the links on the login page. Everyone trying it shares the same shop, and it goes back to how it started every hour, so a few things are turned off there, such as changing the shop's name and colours.
+
+To try everything, including branding, load the demo into an install of your own instead.
+{% endif %}
 ## Load it
 
 Follow steps 1 and 2 of [Install and set up](../getting-started/), but **don't create the admin login yet**. The demo only loads into an empty install. Then run:

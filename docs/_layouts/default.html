@@ -35,6 +35,7 @@
         <a href="{{ '/getting-started/' | relative_url }}">Get started</a>
         <a href="{{ '/guides/barbers/' | relative_url }}">Guides</a>
         <a href="{{ '/faq/' | relative_url }}">Questions</a>
+        {% if site.demo_url %}<a href="{{ site.demo_url }}">Live demo</a>{% endif %}
         <a href="https://github.com/{{ site.repository }}">GitHub</a>
       </nav>
     </div>

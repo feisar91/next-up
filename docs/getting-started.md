@@ -4,7 +4,7 @@ lead: From nothing to a working kiosk, TV and staff logins. Allow about half an 
 next: { title: "Try the demo shop", url: /demo/ }
 ---
 
-This guide sets Next Up up on one machine and gets every screen talking to it. To try it out on your own computer before using it for real, [load the demo shop](../demo/) first: it has made-up customers and history to click around in.
+This guide sets Next Up up on one machine and gets every screen talking to it. To try it out on your own computer before using it for real, [load the demo shop](../demo/) first: it has made-up customers and history to click around in.{% if site.demo_url %} Or try the [live demo]({{ site.demo_url }}) without installing anything.{% endif %}
 
 ## 1. Get a machine with Docker
 
