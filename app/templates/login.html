@@ -9,7 +9,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field">
         <label for="username">Username</label>
-        <input type="text" id="username" name="username" value="{{ username or '' }}" autocomplete="username" required{% if not demo %} autofocus{% endif %}>
+        <input type="text" id="username" name="username" value="{{ username or '' }}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required{% if not demo %} autofocus{% endif %}>
       </div>
       <div class="field">
         <label for="password">Password</label>

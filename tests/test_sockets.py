@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from flask import request
 from flask_login import login_user
 
 from app import db, socketio
@@ -122,6 +123,7 @@ def test_join_unknown_location_gets_nothing(app, client, locations):
 # authorization logic directly under a real authenticated request context instead.
 def test_authenticated_staff_can_join_without_a_token(app, locations, barber):
     with app.test_request_context():
+        request.sid = "staff-page"  # set by Flask-SocketIO on a real event
         b = db.session.get(Barber, barber["id"])
         login_user(b)
 
@@ -152,3 +154,15 @@ def test_unauthenticated_request_context_join_gets_nothing(app, locations):
 
         mock_join_room.assert_not_called()
         mock_emit.assert_not_called()
+
+
+def test_links_and_join_with_an_odd_token_are_just_refused(app, client, locations):
+    # compare_digest raises on non-ASCII text (or anything not text), which only a
+    # made-up link or message would send: that's a mismatch, not a server error.
+    assert client.get("/kiosk/main-street/%C3%A9").status_code == 404
+    assert client.get("/display/main-street/%C3%A9").status_code == 404
+    assert client.get("/kiosk/main-street/%C3%A9/manifest.webmanifest").status_code == 404
+
+    with app.test_request_context():
+        assert handle_join({"location": "main-street", "token": "é"}) is None
+        assert handle_join({"location": "main-street", "token": 12345}) is None

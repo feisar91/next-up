@@ -1,5 +1,8 @@
 import re
 from datetime import timedelta
+from unittest.mock import patch
+
+import pytest
 
 from app import db
 from app.models import Barber, LoginSession, utcnow
@@ -283,3 +286,143 @@ def test_admin_log_in_requires_admin(app, barber, other_location_barber, locatio
         f"/admin/barbers/{other_location_barber['id']}/login", data={"location_id": locations["main-street"]}
     )
     assert resp.status_code == 403
+
+
+# Ending a login also drops the live connection of any page open on it, since the
+# staff queue carries customers' full names. Connections are registered directly
+# (fake socket ids) rather than through socketio.test_client, which mixes up logins
+# between clients (see the note in test_sockets.py).
+
+
+def _session_ids(barber_id):
+    return [record.id for record in LoginSession.query.filter_by(barber_id=barber_id).order_by(LoginSession.id)]
+
+
+@pytest.fixture()
+def dropped():
+    """Fake staff connections: register(sid, login session id). The list fills with
+    the socket ids the app disconnects."""
+    from app import sockets
+
+    calls = []
+
+    def disconnect(sid, namespace=None):
+        calls.append(sid)
+        sockets._staff_connections.pop(sid, None)  # as the real disconnect handler does
+
+    with patch.object(sockets.socketio.server, "disconnect", disconnect):
+        yield calls
+
+
+def _register(sid, session_id):
+    from app import sockets
+
+    sockets._staff_connections[sid] = session_id
+
+
+def test_password_reset_drops_the_barbers_live_connections(app, barber, admin_barber, dropped):
+    phone, tablet, admin = app.test_client(), app.test_client(), app.test_client()
+    login(phone, "alex", "password123")
+    login(tablet, "alex", "password123")
+    login(admin, "morgan", "password123")
+    phone_session, tablet_session = _session_ids(barber["id"])
+    _register("phone", phone_session)
+    _register("tablet", tablet_session)
+    _register("admin", _session_ids(admin_barber["id"])[0])
+
+    admin.post(
+        f"/admin/barbers/{barber['id']}/reset-password",
+        data={"password": "newpass123", "confirm_password": "newpass123"},
+    )
+
+    assert sorted(dropped) == ["phone", "tablet"]
+
+
+def test_deactivating_and_logging_out_a_barber_drop_their_live_connections(app, barber, admin_barber, dropped):
+    admin = app.test_client()
+    login(admin, "morgan", "password123")
+
+    phone = app.test_client()
+    login(phone, "alex", "password123")
+    _register("phone", _session_ids(barber["id"])[0])
+    admin.post(f"/admin/barbers/{barber['id']}/logout")
+    assert dropped == ["phone"]
+
+    login(phone, "alex", "password123")
+    _register("phone-again", _session_ids(barber["id"])[0])
+    admin.post(f"/admin/barbers/{barber['id']}/toggle-active")
+    assert dropped == ["phone", "phone-again"]
+
+
+def test_changing_own_password_keeps_this_devices_connection(app, barber, dropped):
+    phone, tablet = app.test_client(), app.test_client()
+    login(phone, "alex", "password123")
+    login(tablet, "alex", "password123")
+    phone_session, tablet_session = _session_ids(barber["id"])
+    _register("phone", phone_session)
+    _register("tablet", tablet_session)
+
+    phone.post(
+        "/staff/profile",
+        data={
+            "form_name": "change_password",
+            "current_password": "password123",
+            "password": "brand-new-pass",
+            "confirm_password": "brand-new-pass",
+        },
+    )
+
+    assert dropped == ["tablet"]
+
+
+def test_logging_out_drops_only_that_devices_connection(app, barber, dropped):
+    phone, tablet = app.test_client(), app.test_client()
+    login(phone, "alex", "password123")
+    login(tablet, "alex", "password123")
+    phone_session, tablet_session = _session_ids(barber["id"])
+    _register("phone", phone_session)
+    _register("tablet", tablet_session)
+
+    phone.post("/logout")
+
+    assert dropped == ["phone"]
+
+
+def test_an_expired_login_drops_its_connection(app, barber, dropped):
+    phone = app.test_client()
+    login(phone, "alex", "password123")
+    record = LoginSession.query.filter_by(barber_id=barber["id"]).one()
+    _register("phone", record.id)
+    record.last_seen_at = utcnow() - timedelta(hours=13)
+    db.session.commit()
+
+    login(app.test_client(), "alex", "password123")  # a new login clears out expired ones
+
+    assert dropped == ["phone"]
+
+
+def test_staff_join_registers_the_connection_and_a_logged_out_page_is_told(app, locations, barber):
+    from flask import g, request
+
+    from app import sockets
+    from app.login_sessions import start_session
+
+    with app.test_request_context():
+        request.sid = "staff-page"
+        start_session(db.session.get(Barber, barber["id"]))
+        with patch("app.sockets.join_room"), patch.object(sockets, "broadcast_queue"), patch.object(
+            sockets, "broadcast_barbers"
+        ), patch.object(sockets, "broadcast_store_status"), patch.object(
+            sockets, "broadcast_announcement"
+        ), patch.object(sockets, "broadcast_kiosk_status"):
+            assert "version" in sockets.handle_join({"location": "main-street"})
+    assert sockets._staff_connections == {"staff-page": _session_ids(barber["id"])[0]}
+    sockets._staff_connections.clear()
+
+    g.pop("_login_user", None)  # the test app context outlives each request context
+    with app.test_request_context():
+        request.sid = "logged-out-page"
+        assert sockets.handle_join({"location": "main-street"}) == {"logged_out": True}
+        # A kiosk or TV with a wrong token is just ignored, as before.
+        assert sockets.handle_join({"location": "main-street", "token": "wrong"}) is None
+    assert sockets._staff_connections == {}

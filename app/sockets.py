@@ -1,5 +1,4 @@
 import math
-import secrets
 import threading
 from collections import Counter
 from datetime import timedelta
@@ -10,7 +9,7 @@ from flask_socketio import join_room
 
 from app import db, socketio
 from app.announcements import current_announcement
-from app.models import Barber, Location, QueueEntry, utcnow
+from app.models import Barber, Location, QueueEntry, token_matches, utcnow
 
 DEVICE_KINDS = ("kiosk", "display")
 DEVICE_LABELS = {"kiosk": "kiosk", "display": "TV display"}
@@ -33,6 +32,10 @@ STARTUP_GRACE = timedelta(seconds=60)
 # README); after a restart the screens reconnect within seconds.
 _device_connections = {}
 _device_lock = threading.Lock()
+# Socket.IO session id -> LoginSession id for every connected staff or admin page,
+# so ending a login (logout, password reset, deactivation) also ends its live
+# updates (disconnect_logins). Guarded by _device_lock too.
+_staff_connections = {}
 # Screens connected before a restart are dropped without a disconnect being
 # recorded, so a last_seen from before startup doesn't say whether the screen was
 # online. Until it reconnects, or STARTUP_GRACE runs out, its state is unknown.
@@ -163,12 +166,13 @@ def handle_join(data):
     # (any logged-in barber/admin - matches the staff dashboard's own access
     # model, which already lets any barber work any location).
     device_kind = None
-    if token and secrets.compare_digest(token, location.display_token):
+    if token and token_matches(token, location.display_token):
         device_kind = "display"
-    elif token and secrets.compare_digest(token, location.kiosk_token):
+    elif token and token_matches(token, location.kiosk_token):
         device_kind = "kiosk"
     if not (device_kind or current_user.is_authenticated):
-        return
+        # A staff page whose login has ended reloads, which takes it to the login page.
+        return None if token else {"logged_out": True}
 
     # After a restart the shop screens only reconnect here (no page load), so
     # this also starts the background checks if no web request has yet.
@@ -178,6 +182,8 @@ def handle_join(data):
 
     if device_kind:
         _track_device(location, device_kind)
+    else:
+        _track_staff()
     join_room(location_room(slug))
     if device_kind == "display":
         join_room(display_room(slug))
@@ -212,9 +218,30 @@ def _track_device(location, kind):
     broadcast_device_status(location)
 
 
+def _track_staff():
+    from app.login_sessions import current_session_id
+
+    with _device_lock:
+        _staff_connections[request.sid] = current_session_id()
+
+
+def disconnect_logins(session_ids):
+    """Drop the live connections of staff and admin pages open on these logins
+    (LoginSession ids). Browsers don't reconnect after this; staff.js reloads,
+    which lands on the login page."""
+    ended = set(session_ids)
+    if not ended:
+        return
+    with _device_lock:
+        sids = [sid for sid, session_id in _staff_connections.items() if session_id in ended]
+    for sid in sids:
+        socketio.server.disconnect(sid, namespace="/")
+
+
 @socketio.on("disconnect")
 def handle_disconnect(*args):
     with _device_lock:
+        _staff_connections.pop(request.sid, None)
         device = _device_connections.pop(request.sid, None)
     if device:
         location = _mark_seen(*device)
@@ -306,6 +333,7 @@ def handle_watch_devices(*args):
     again on reconnect (it may have missed changes) and when a grace runs out."""
     if not (current_user.is_authenticated and current_user.is_admin):
         return None
+    _track_staff()
     join_room(ADMIN_DEVICES_ROOM)
     return [device_status_update(location) for location in Location.query.filter_by(active=True).order_by(Location.id)]
 

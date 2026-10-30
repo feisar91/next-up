@@ -6,7 +6,7 @@ from flask_login import current_user, login_required
 from app import audit, db
 from app.announcements import MAX_LENGTH as ANNOUNCEMENT_MAX_LENGTH
 from app.announcements import current_announcement, set_announcement
-from app.models import MIN_PASSWORD_LENGTH, Location, QueueEntry
+from app.models import MIN_PASSWORD_LENGTH, Location, QueueEntry, length_error
 from app.opening_hours import schedule_note, set_store_closed
 from app.branding import get_brand
 from app.web_app import manifest_response
@@ -158,6 +158,10 @@ def profile():
         name = request.form.get("name", "").strip()
         if not name:
             flash("Display name can't be empty.", "error")
+            return redirect(url_for("staff.profile"))
+        too_long = length_error("display name", name, "barber_name")
+        if too_long:
+            flash(too_long, "error")
             return redirect(url_for("staff.profile"))
 
         name_changed = name != current_user.name

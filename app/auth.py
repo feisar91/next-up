@@ -3,7 +3,7 @@ from flask_login import current_user, login_required
 from sqlalchemy.exc import IntegrityError
 
 from app import audit, db
-from app.models import MIN_PASSWORD_LENGTH, Barber, Setting
+from app.models import MIN_PASSWORD_LENGTH, Barber, Setting, length_error
 from app.login_sessions import end_all_sessions, end_current_session, start_session
 from app.login_throttle import clear_failures, client_ip, lockout_minutes, record_failure
 from app.staff import clear_on_duty
@@ -39,8 +39,11 @@ def setup():
         confirm_password = request.form.get("confirm_password", "")
         form = {"name": name, "username": username}
 
+        too_long = length_error("name", name, "barber_name") or length_error("username", username, "username")
         if not name or not username:
             flash("Enter your name and a username.", "error")
+        elif too_long:
+            flash(too_long, "error")
         elif len(password) < MIN_PASSWORD_LENGTH:
             flash(f"Password must be at least {MIN_PASSWORD_LENGTH} characters.", "error")
         elif password != confirm_password:
@@ -83,9 +86,9 @@ def login():
             )
             return render_template("login.html", username=username), 429
 
-        barber = Barber.query.filter_by(username=username, active=True).first()
+        barber = Barber.by_username(username)
 
-        if barber and barber.check_password(password):
+        if barber and barber.active and barber.check_password(password):
             clear_failures(username)
             # start_session() starts from an empty session, so a fresh login always
             # re-picks a location - the location picker uses their default (if any)

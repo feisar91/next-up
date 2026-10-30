@@ -110,6 +110,8 @@ def reset_device_connections():
     from app import sockets
 
     sockets._device_connections.clear()
+    sockets._staff_connections.clear()
     sockets._process_started_at = sockets.utcnow() - timedelta(days=1)
     yield
     sockets._device_connections.clear()
+    sockets._staff_connections.clear()

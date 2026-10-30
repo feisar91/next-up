@@ -142,7 +142,7 @@ def register_cli(app):
         Also reactivates the login if it was deactivated. The admin must choose their
         own password on next login.
         """
-        admin = Barber.query.filter_by(username=username).first()
+        admin = Barber.by_username(username)
         if not admin:
             raise click.ClickException(f"No login with username '{username}'.")
         if not admin.is_admin:

@@ -8,6 +8,24 @@ from app import db
 
 MIN_PASSWORD_LENGTH = 8
 
+# The longest text each of these columns holds. PostgreSQL refuses anything longer
+# with an error (SQLite, used by the tests, doesn't check), so the forms that fill
+# them check these too. Templates get them as `max_lengths`.
+MAX_LENGTHS = {
+    "customer_name": 120,
+    "barber_name": 120,
+    "username": 80,
+    "location_name": 120,
+    "location_slug": 120,
+    "location_address": 255,
+}
+
+
+def length_error(label, value, field):
+    """The message to show if `value` is too long for its column, else None."""
+    limit = MAX_LENGTHS[field]
+    return f"Keep the {label} to {limit} characters or fewer." if len(value) > limit else None
+
 
 def utcnow():
     return datetime.now(timezone.utc)
@@ -24,13 +42,20 @@ def generate_token():
     return secrets.token_urlsafe(24)
 
 
+def token_matches(given, expected):
+    """Whether a kiosk or TV token from a link or a socket message is the right one,
+    compared in constant time. compare_digest raises on text that isn't ASCII (or
+    isn't text), which only a made-up link would send, so that's just a mismatch."""
+    return isinstance(given, str) and given.isascii() and secrets.compare_digest(given, expected)
+
+
 class Location(db.Model):
     __tablename__ = "locations"
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), nullable=False)
-    slug = db.Column(db.String(120), nullable=False, unique=True)
-    address = db.Column(db.String(255))
+    name = db.Column(db.String(MAX_LENGTHS["location_name"]), nullable=False)
+    slug = db.Column(db.String(MAX_LENGTHS["location_slug"]), nullable=False, unique=True)
+    address = db.Column(db.String(MAX_LENGTHS["location_address"]))
     active = db.Column(db.Boolean, nullable=False, default=True)
     # While true the kiosk refuses new check-ins (enforced server-side, not just
     # hidden). Set by a barber from the staff dashboard, or by the opening-hours
@@ -133,8 +158,8 @@ class Barber(UserMixin, db.Model):
     # preferred-barber list is drawn from, not default_location_id (which is
     # just a login-time convenience and may not reflect where they actually are).
     on_duty_location_id = db.Column(db.Integer, db.ForeignKey("locations.id"), nullable=True)
-    name = db.Column(db.String(120), nullable=False)
-    username = db.Column(db.String(80), nullable=False, unique=True)
+    name = db.Column(db.String(MAX_LENGTHS["barber_name"]), nullable=False)
+    username = db.Column(db.String(MAX_LENGTHS["username"]), nullable=False, unique=True)
     password_hash = db.Column(db.String(255), nullable=False)
     is_admin = db.Column(db.Boolean, nullable=False, default=False)
     active = db.Column(db.Boolean, nullable=False, default=True)
@@ -176,6 +201,23 @@ class Barber(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    # Usernames ignore capitals: phones often capitalise the first letter typed.
+
+    @classmethod
+    def by_username(cls, username):
+        """The login with this username, whatever its capitals. Should two differ only
+        in capitals (possible on installs from before this), the exact spelling wins."""
+        matches = cls.query.filter(db.func.lower(cls.username) == username.lower()).all()
+        exact = next((barber for barber in matches if barber.username == username), None)
+        return exact or (matches[0] if len(matches) == 1 else None)
+
+    @classmethod
+    def username_taken(cls, username, ignore_id=None):
+        query = cls.query.filter(db.func.lower(cls.username) == username.lower())
+        if ignore_id is not None:
+            query = query.filter(cls.id != ignore_id)
+        return db.session.query(query.exists()).scalar()
+
     def __repr__(self):
         return f"<Barber {self.username}>"
 
@@ -200,7 +242,7 @@ class QueueEntry(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     location_id = db.Column(db.Integer, db.ForeignKey("locations.id"), nullable=False)
-    customer_name = db.Column(db.String(120), nullable=False)
+    customer_name = db.Column(db.String(MAX_LENGTHS["customer_name"]), nullable=False)
     preferred_barber_id = db.Column(db.Integer, db.ForeignKey("barbers.id"), nullable=True)
     status = db.Column(db.String(20), nullable=False, default=STATUS_WAITING)
 

@@ -467,3 +467,63 @@ def test_admin_barbers_tab_hides_self_actions(client, admin_barber, barber):
     # The kiosk switch is available on every row, including the admin's own.
     assert "toggle-kiosk" in own_row
     assert "toggle-kiosk" in other_row
+
+
+def test_admin_cannot_remove_their_own_admin_access(app, client, admin_barber):
+    login(client, admin_barber["username"], admin_barber["password"])
+
+    response = client.post(
+        f"/admin/barbers/{admin_barber['id']}/edit",
+        data={"name": "Morgan Admin", "username": "morgan"},
+        follow_redirects=True,
+    )
+
+    assert "You can&#39;t remove your own admin access. Another admin can." in response.data.decode()
+    assert db.session.get(Barber, admin_barber["id"]).is_admin is True
+
+
+def test_own_edit_page_locks_the_admin_box_but_still_saves(app, client, admin_barber):
+    login(client, admin_barber["username"], admin_barber["password"])
+
+    html = client.get(f"/admin/barbers/{admin_barber['id']}/edit").data.decode()
+    assert "checked disabled" in html
+    assert '<input type="hidden" name="is_admin" value="on">' in html
+
+    client.post(
+        f"/admin/barbers/{admin_barber['id']}/edit",
+        data={"name": "Morgan", "username": "morgan", "is_admin": "on"},
+    )
+    admin = db.session.get(Barber, admin_barber["id"])
+    assert (admin.name, admin.is_admin) == ("Morgan", True)
+
+
+def test_admin_can_remove_another_admins_access(app, client, admin_barber, barber):
+    login(client, admin_barber["username"], admin_barber["password"])
+    db.session.get(Barber, barber["id"]).is_admin = True
+    db.session.commit()
+
+    client.post(f"/admin/barbers/{barber['id']}/edit", data={"name": "Alex", "username": "alex"})
+
+    assert db.session.get(Barber, barber["id"]).is_admin is False
+
+
+def test_usernames_differing_only_in_capitals_are_taken(app, client, admin_barber, barber, other_location_barber):
+    login(client, admin_barber["username"], admin_barber["password"])
+
+    response = client.post(
+        "/admin/barbers",
+        data={"name": "Alex Two", "username": "ALEX", "password": "password123", "confirm_password": "password123"},
+        follow_redirects=True,
+    )
+    assert "Username &#39;ALEX&#39; is already taken." in response.data.decode()
+
+    response = client.post(
+        f"/admin/barbers/{other_location_barber['id']}/edit",
+        data={"name": "Sam", "username": "Alex"},
+        follow_redirects=True,
+    )
+    assert "Username &#39;Alex&#39; is already taken." in response.data.decode()
+
+    # Changing the capitals of your own username is fine.
+    client.post(f"/admin/barbers/{barber['id']}/edit", data={"name": "Alex", "username": "Alex"})
+    assert db.session.get(Barber, barber["id"]).username == "Alex"

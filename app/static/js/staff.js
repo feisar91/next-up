@@ -15,11 +15,22 @@
 
   socket.on("connect", function () {
     socket.emit("join", { location: window.LOCATION_SLUG }, function (ack) {
+      // Logged out elsewhere (or by an admin): reloading shows the login page.
+      if (ack && ack.logged_out) {
+        reloadOnceAMinute();
+        return;
+      }
       window.checkAppVersion(ack);
     });
   });
   socket.on("app_version", function (ack) {
     window.checkAppVersion(ack);
+  });
+  // The server only closes a staff page's connection when its login has ended
+  // (logged out elsewhere or by an admin), and the browser won't reconnect by
+  // itself after that, so reload: that shows the login page.
+  socket.on("disconnect", function (reason) {
+    if (reason === "io server disconnect") reloadOnceAMinute();
   });
 
   socket.on("queue_update", function (state) {
@@ -64,6 +75,19 @@
     if (state.closed === window.STORE_CLOSED) return;
     window.location.reload();
   });
+
+  // At most once a minute, in case the page itself still loads logged in (so the
+  // reload wouldn't help) and it would otherwise reload over and over.
+  function reloadOnceAMinute() {
+    try {
+      const last = Number(sessionStorage.getItem("loggedOutReloadAt") || 0);
+      if (Date.now() - last < 60000) return;
+      sessionStorage.setItem("loggedOutReloadAt", String(Date.now()));
+    } catch (e) {
+      // Storage unavailable: reload anyway.
+    }
+    window.location.reload();
+  }
 
   setRecent(window.INITIAL_RECENT || []);
   setInterval(renderRecent, 5000);

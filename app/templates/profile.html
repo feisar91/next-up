@@ -9,7 +9,7 @@
       <input type="hidden" name="form_name" value="profile">
       <div class="field">
         <label for="name">Display name</label>
-        <input type="text" id="name" name="name" value="{{ current_user.name }}" maxlength="120" required>
+        <input type="text" id="name" name="name" value="{{ current_user.name }}" maxlength="{{ max_lengths.barber_name }}" required>
       </div>
       <p class="meta" style="color:var(--color-muted);">
         Shown on the check-in kiosk, the staff dashboard and in metrics.

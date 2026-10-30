@@ -9,7 +9,7 @@ from app.announcements import MAX_LENGTH as ANNOUNCEMENT_MAX_LENGTH
 from app.announcements import current_announcement, set_announcement
 from app.authz import admin_required
 from app.login_sessions import end_all_sessions, logged_in_barbers
-from app.models import Barber, Location, OpeningHours, QueueEntry, Setting, SpecialHours
+from app.models import Barber, Location, OpeningHours, QueueEntry, Setting, SpecialHours, length_error
 from app.opening_hours import WEEKDAY_NAMES, apply_schedule, format_clock
 from app.settings import get_timezone, get_timezone_name, set_timezone_name, timezone_choices, timezone_is_set
 from app.sockets import broadcast_barbers, broadcast_queue, device_status, disconnect_devices
@@ -216,8 +216,15 @@ def create_location():
     slug = slugify(request.form.get("slug", "") or name)
     address = request.form.get("address", "").strip()
 
+    too_long = (
+        length_error("location name", name, "location_name")
+        or length_error("short name for links", slug, "location_slug")
+        or length_error("address", address, "location_address")
+    )
     if not name or not slug:
         flash("Location name is required.", "error")
+    elif too_long:
+        flash(too_long, "error")
     elif Location.query.filter_by(slug=slug).first():
         flash(f"Slug '{slug}' is already in use.", "error")
     else:
@@ -241,11 +248,14 @@ def create_barber():
     is_admin = bool(request.form.get("is_admin"))
     show_on_kiosk = bool(request.form.get("show_on_kiosk"))
 
+    too_long = length_error("name", name, "barber_name") or length_error("username", username, "username")
     if not all([name, username, password]):
         flash("Name, username and password are all required.", "error")
+    elif too_long:
+        flash(too_long, "error")
     elif password != confirm_password:
         flash("Temporary passwords do not match.", "error")
-    elif Barber.query.filter_by(username=username).first():
+    elif Barber.username_taken(username):
         flash(f"Username '{username}' is already taken.", "error")
     else:
         barber = Barber(
@@ -281,13 +291,17 @@ def edit_barber(barber_id):
         username = request.form.get("username", "").strip()
         default_location_id = request.form.get("default_location_id") or None
         is_admin = bool(request.form.get("is_admin"))
-
-        existing = Barber.query.filter_by(username=username).first()
+        too_long = length_error("name", name, "barber_name") or length_error("username", username, "username")
 
         if not name or not username:
             flash("Name and username are required.", "error")
-        elif existing and existing.id != barber.id:
+        elif too_long:
+            flash(too_long, "error")
+        elif Barber.username_taken(username, ignore_id=barber.id):
             flash(f"Username '{username}' is already taken.", "error")
+        elif barber.id == current_user.id and not is_admin:
+            # There'd be no one left to give it back if they're the only admin.
+            flash("You can't remove your own admin access. Another admin can.", "error")
         else:
             new_location_id = int(default_location_id) if default_location_id else None
             changes = audit.barber_changes(barber, name, username, new_location_id, is_admin)

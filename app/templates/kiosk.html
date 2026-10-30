@@ -86,14 +86,14 @@
               <label for="customer_name">Your name</label>
               {# Shared tablet: don't offer earlier customers' names, or "correct" unusual ones. #}
               <input type="text" id="customer_name" name="customer_name" required autofocus placeholder="Enter your name"
-                     autocomplete="off" autocorrect="off" spellcheck="false">
+                     maxlength="{{ max_lengths.customer_name }}" autocomplete="off" autocorrect="off" spellcheck="false">
               {# A group checking in together: kiosk.js adds a row per extra person. #}
               <div class="group-people" id="group-people"></div>
               <button type="button" class="add-person" id="add-person" data-max-group-size="{{ max_group_size }}">+ Add another person</button>
               <template id="group-person-template">
                 <div class="group-person">
                   <input type="text" name="customer_name" placeholder="Their name" aria-label="Another person's name"
-                         autocomplete="off" autocorrect="off" spellcheck="false">
+                         maxlength="{{ max_lengths.customer_name }}" autocomplete="off" autocorrect="off" spellcheck="false">
                   <button type="button" class="remove-person" aria-label="Remove this person">&times;</button>
                 </div>
               </template>

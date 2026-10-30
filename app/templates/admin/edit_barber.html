@@ -8,11 +8,11 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field">
         <label for="name">Name</label>
-        <input type="text" id="name" name="name" value="{{ barber.name }}" required>
+        <input type="text" id="name" name="name" value="{{ barber.name }}" maxlength="{{ max_lengths.barber_name }}" required>
       </div>
       <div class="field">
         <label for="username">Username</label>
-        <input type="text" id="username" name="username" value="{{ barber.username }}" required>
+        <input type="text" id="username" name="username" value="{{ barber.username }}" maxlength="{{ max_lengths.username }}" autocapitalize="none" autocorrect="off" spellcheck="false" required>
       </div>
       <div class="field">
         <label for="default_location_id">Default location</label>
@@ -26,7 +26,14 @@
         </select>
       </div>
       <div class="field">
-        <label><input type="checkbox" name="is_admin" style="width:auto;display:inline-block;" {% if barber.is_admin %}checked{% endif %}> Grant admin access</label>
+        {% if barber.id == current_user.id %}
+          {# Ticked and locked: an admin can't remove their own access (another admin can). #}
+          <input type="hidden" name="is_admin" value="on">
+          <label><input type="checkbox" style="width:auto;display:inline-block;" checked disabled> Grant admin access</label>
+          <p class="meta">You can't remove your own admin access. Another admin can.</p>
+        {% else %}
+          <label><input type="checkbox" name="is_admin" style="width:auto;display:inline-block;" {% if barber.is_admin %}checked{% endif %}> Grant admin access</label>
+        {% endif %}
       </div>
       <div style="display:flex;gap:0.75rem;">
         <button type="submit" class="btn">Save Changes</button>

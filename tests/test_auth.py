@@ -347,3 +347,32 @@ def test_home_page_shows_log_in_after_logging_out(client, locations, barber):
     client.post("/logout")
 
     assert b"Staff Log In" in client.get("/").data
+
+
+def test_login_ignores_capitals_in_the_username(client, barber):
+    # Phones often capitalise the first letter typed.
+    response = client.post("/login", data={"username": "Alex", "password": "password123"})
+
+    assert response.status_code == 302
+    assert "/staff" in response.headers["Location"]
+
+
+def test_login_prefers_the_exact_spelling_when_two_differ_only_in_capitals(app, client, barber):
+    # Possible on installs from before usernames ignored capitals.
+    other = Barber(name="Other Alex", username="ALEX")
+    other.set_password("different-pass")
+    db.session.add(other)
+    db.session.commit()
+
+    assert client.post("/login", data={"username": "ALEX", "password": "different-pass"}).status_code == 302
+    other_client = client.application.test_client()
+    assert other_client.post("/login", data={"username": "alex", "password": "password123"}).status_code == 302
+    # Neither exact: ambiguous, so neither login.
+    third = client.application.test_client()
+    assert third.post("/login", data={"username": "Alex", "password": "password123"}).status_code == 200
+
+
+def test_username_fields_turn_off_auto_capitals(client, barber):
+    html = client.get("/login").data.decode()
+
+    assert 'autocapitalize="none"' in html

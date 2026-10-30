@@ -6,7 +6,7 @@ next: { title: "Kiosk and TV", url: /guides/kiosk-and-tv/ }
 
 ## Logging in
 
-Open the shop's Next Up address on your phone and log in with the username and password the owner gave you. The first time, you're asked to choose your own password.
+Open the shop's Next Up address on your phone and log in with the username and password the owner gave you. Capital letters in the username don't matter. The first time, you're asked to choose your own password.
 
 Then pick the shop you're working at today. If you have a usual shop, it's at the top as a single button. Once you've picked, you show up on that shop's kiosk, so customers can ask for you by name.
 

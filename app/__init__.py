@@ -74,6 +74,11 @@ def create_app(config_class=Config):
             "demo": demo_mode.DemoInfo() if demo_mode.enabled() else None,
         }
 
+    from app.models import MAX_LENGTHS
+
+    # For maxlength on form inputs; the server checks the same limits.
+    app.jinja_env.globals["max_lengths"] = MAX_LENGTHS
+
     from app.login_sessions import load_user
 
     login_manager.user_loader(load_user)

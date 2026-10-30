@@ -2,6 +2,7 @@
 from datetime import timedelta
 from unittest.mock import patch
 
+from flask import request
 from flask_login import login_user
 
 from app import db, socketio, sockets
@@ -33,6 +34,7 @@ def _device_updates(mock_emit):
 # socketio.test_client, which flakes (see the note in test_sockets.py).
 def _watch_as(app, barber_id):
     with app.test_request_context():
+        request.sid = "admin-page"  # set by Flask-SocketIO on a real event
         login_user(db.session.get(Barber, barber_id))
         with patch("app.sockets.join_room") as mock_join_room:
             ack = handle_watch_devices()

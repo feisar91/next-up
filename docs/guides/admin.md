@@ -46,10 +46,10 @@ Closing never removes anyone. Customers already waiting stay in the queue.
 The table shows each login, where they're working right now, and whether they're logged in.
 
 - **Add Barber** at the bottom creates a login with a temporary password. They pick their own the first time they log in.
-- **Edit** changes their name, username, usual shop or admin access.
+- **Edit** changes their name, username, usual shop or admin access. You can't take away your own admin access, so there's always someone who can manage the shop. Another admin can.
 - **Reset Password** gives them a new temporary password and logs them out everywhere.
 - **On Kiosk** decides whether customers can ask for them by name. Barbers can't change this themselves. Their own break button is separate.
-- **Log Out** logs a barber out on all their devices and takes them off the kiosk. Handy when someone leaves a shared tablet logged in.
+- **Log Out** logs a barber out on all their devices and takes them off the kiosk. Any queue page they have open goes back to the login page. Handy when someone leaves a shared tablet logged in.
 - **Log In** puts a barber who isn't logged in on duty at a shop you choose, for example when they've left their phone at home. They show on that shop's kiosk until someone logs them out, or for 12 hours if they never log in on a device.
 - **Deactivate** blocks a login without deleting it, for someone who's left. **Delete** removes a deactivated login for good. Their past cuts stay in the history, shown as "Unassigned".
 

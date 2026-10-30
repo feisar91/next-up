@@ -1,12 +1,10 @@
-import secrets
-
 from flask import Blueprint, abort, redirect, render_template, request, session, url_for
 
 from app import audit, db
 from app.announcements import current_announcement
 from app.branding import get_brand
 from app.demo_mode import KIOSK_ERROR_SESSION_KEY
-from app.models import Location, QueueEntry, utcnow
+from app.models import MAX_LENGTHS, Location, QueueEntry, token_matches, utcnow
 from app.opening_hours import reopens_text
 from app.sockets import broadcast_queue, kiosk_barbers, queue_state
 from app.web_app import manifest_response
@@ -23,7 +21,7 @@ MAX_GROUP_SIZE = 6
 
 def _get_authorized_location(location_slug, token):
     location = Location.query.filter_by(slug=location_slug, active=True).first()
-    if not location or not secrets.compare_digest(token, location.kiosk_token):
+    if not location or not token_matches(token, location.kiosk_token):
         abort(404)
     return location
 
@@ -80,7 +78,9 @@ def _check_in(location, barbers):
     A group (a parent with their kids) sends one `customer_name` per person and
     gets consecutive places, each person a separate entry. They share one
     preferred barber."""
-    names = [n.strip() for n in request.form.getlist("customer_name") if n.strip()][:MAX_GROUP_SIZE]
+    # Cut to fit, rather than turning a customer away (the page limits it too).
+    limit = MAX_LENGTHS["customer_name"]
+    names = [n.strip()[:limit].strip() for n in request.form.getlist("customer_name") if n.strip()][:MAX_GROUP_SIZE]
     if location.closed or not names:
         return
 

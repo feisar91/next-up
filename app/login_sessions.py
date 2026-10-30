@@ -42,8 +42,11 @@ def start_session(barber):
         )
     )
     # Housekeeping: drop sessions that have already expired.
-    LoginSession.query.filter(LoginSession.last_seen_at < _idle_cutoff()).delete()
+    expired = LoginSession.query.filter(LoginSession.last_seen_at < _idle_cutoff())
+    expired_ids = [record_id for (record_id,) in expired.with_entities(LoginSession.id)]
+    expired.delete()
     db.session.commit()
+    _disconnect(expired_ids)
 
     session.clear()
     session.permanent = True
@@ -58,6 +61,12 @@ def _current_record():
     return LoginSession.query.filter_by(token_hash=_hash(token)).first()
 
 
+def current_session_id():
+    """The LoginSession id of the browser making this request (or Socket.IO event)."""
+    record = _current_record()
+    return record.id if record else None
+
+
 def load_user(user_id):
     """Flask-Login user_loader: only trusts the cookie if its session row is live."""
     record = _current_record()
@@ -68,8 +77,10 @@ def load_user(user_id):
     if last_seen.tzinfo is None:  # SQLite (tests) hands back naive datetimes
         last_seen = last_seen.replace(tzinfo=now.tzinfo)
     if last_seen < now - current_app.permanent_session_lifetime:
+        record_id = record.id
         db.session.delete(record)
         db.session.commit()
+        _disconnect([record_id])
         return None
     barber = record.barber
     if not barber.active:
@@ -83,8 +94,10 @@ def load_user(user_id):
 def end_current_session():
     record = _current_record()
     if record:
+        record_id = record.id
         db.session.delete(record)
         db.session.commit()
+        _disconnect([record_id])
     logout_user()
     session.clear()
 
@@ -96,8 +109,18 @@ def end_all_sessions(barber, keep_current=False):
         current = _current_record()
         if current:
             query = query.filter(LoginSession.id != current.id)
+    ended = [record_id for (record_id,) in query.with_entities(LoginSession.id)]
     query.delete()
     db.session.commit()
+    _disconnect(ended)
+
+
+def _disconnect(session_ids):
+    """Drop the live updates of pages open on these logins: the staff queue carries
+    customers' full names, so it mustn't keep flowing to a logged-out phone."""
+    from app.sockets import disconnect_logins
+
+    disconnect_logins(session_ids)
 
 
 def logged_in_barbers():

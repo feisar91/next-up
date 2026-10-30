@@ -9,11 +9,11 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field">
         <label for="name">Your name</label>
-        <input type="text" id="name" name="name" value="{{ form.name }}" autocomplete="name" required autofocus>
+        <input type="text" id="name" name="name" value="{{ form.name }}" maxlength="{{ max_lengths.barber_name }}" autocomplete="name" required autofocus>
       </div>
       <div class="field">
         <label for="username">Username</label>
-        <input type="text" id="username" name="username" value="{{ form.username }}" autocomplete="username" required>
+        <input type="text" id="username" name="username" value="{{ form.username }}" maxlength="{{ max_lengths.username }}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
       </div>
       <div class="field">
         <label for="password">Password (at least {{ min_password_length }} characters)</label>
