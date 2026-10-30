@@ -14,6 +14,7 @@
   {% include "_brand_head.html" %}
 </head>
 <body>
+  {% if demo %}{% include "_demo_banner.html" %}{% endif %}
   <header class="site-header">
     <div class="top-bar">
       <a href="{{ url_for('staff.landing') if current_user.is_authenticated else url_for('index') }}" class="brand-link">

@@ -47,8 +47,9 @@ Run with `docker compose exec app flask <command>`:
 
 | Command | What it does |
 |---|---|
-| `bootstrap` | First-run setup, run on every start. Creates an `admin` login from `ADMIN_PASSWORD` if set and no login exists. |
+| `bootstrap` | First-run setup, run on every start. Creates an `admin` login from `ADMIN_PASSWORD` if set and no login exists. In demo mode it loads a fresh demo instead. |
 | `seed-demo` | Loads the demo shop into an empty database. |
+| `demo-reset` | Erases and reloads the public demo. Only works with `DEMO_MODE=true`; see [Hosting a public demo](../public-demo/). |
 | `set-branding` | Sets the shop name, colours, logo or icon. See `--help`. |
 | `reset-admin-password --username <name>` | Gives an admin login a new temporary password and switches it back on. |
 

@@ -87,6 +87,15 @@
   margin: 0 0 2rem;
 }
 
+.kiosk-error {
+  margin: 0 0 1.25rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
 .kiosk-form input[type="text"] {
   font-size: 1.5rem;
   padding: 1.1rem 1.25rem;

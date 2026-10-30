@@ -51,5 +51,6 @@
   <script src="{{ url_for('static', filename='js/announcement.js') }}"></script>
   <script src="{{ url_for('static', filename='js/animated-list.js') }}"></script>
   <script src="{{ url_for('static', filename='js/display.js') }}"></script>
+  {% if demo %}{% with screen=True %}{% include "_demo_banner.html" %}{% endwith %}{% endif %}
 </body>
 </html>

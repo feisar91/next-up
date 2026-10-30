@@ -1,0 +1,14 @@
+{# The public demo's notice (app/demo_mode.py). Set `screen=True` on the kiosk and TV,
+   where it's a small label in the corner instead of a bar across the top.
+   demo-banner.js keeps the time until the reset up to date. #}
+<div class="demo-banner{% if screen %} demo-banner-screen{% endif %}" role="note"
+     data-resets-at="{{ demo.resets_at }}" data-interval-minutes="{{ config.DEMO_RESET_MINUTES }}"
+     {% if not screen %}data-reload-on-reset{% endif %}>
+  <strong>Demo</strong>
+  {% if screen %}
+    <span>Resets <span data-demo-countdown>soon</span></span>
+  {% else %}
+    <span>Anyone can try this shop. Everything goes back to how it started <span data-demo-countdown>every hour</span>.</span>
+  {% endif %}
+</div>
+<script src="{{ url_for('static', filename='js/demo-banner.js') }}"></script>

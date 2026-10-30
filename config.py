@@ -45,6 +45,15 @@ class Config:
     LOGIN_MAX_FAILURES_PER_IP = int(os.environ.get("LOGIN_MAX_FAILURES_PER_IP", 20))
     LOGIN_LOCKOUT_MINUTES = int(os.environ.get("LOGIN_LOCKOUT_MINUTES", 15))
 
+    # The public demo (see app/demo_mode.py): the made-up shop from `flask seed-demo`,
+    # erased and loaded again every DEMO_RESET_MINUTES, with the actions that would
+    # spoil it for other visitors turned off. Only for an install that is just the demo.
+    DEMO_MODE = os.environ.get("DEMO_MODE", "false").lower() == "true"
+    DEMO_RESET_MINUTES = int(os.environ.get("DEMO_RESET_MINUTES", 60))
+    DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD") or "demo-password"
+    # How often the demo checks whether a reset is due. 0 disables it.
+    DEMO_RESET_CHECK_SECONDS = 15
+
     # Set when running behind a reverse proxy (Nginx, Caddy) so the client's real IP
     # (X-Forwarded-For) is used for rate limiting instead of the proxy's.
     BEHIND_PROXY = os.environ.get("BEHIND_PROXY", "false").lower() == "true"
@@ -62,3 +71,5 @@ class TestConfig(Config):
     # ...and apply_all_schedules() and clear_leftover_entries() directly too.
     OPENING_HOURS_CHECK_SECONDS = 0
     QUEUE_CLEANUP_CHECK_SECONDS = 0
+    DEMO_MODE = False
+    DEMO_RESET_CHECK_SECONDS = 0

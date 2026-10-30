@@ -17,8 +17,11 @@ SETUP_CLAIM_KEY = "first_admin_created"
 
 def needs_first_admin():
     """A brand-new install: nobody can log in until the owner creates the first
-    admin login on /setup (or `flask bootstrap` makes one from ADMIN_PASSWORD)."""
-    return Barber.query.first() is None
+    admin login on /setup (or `flask bootstrap` makes one from ADMIN_PASSWORD).
+    Never in the public demo, which is briefly empty while it resets."""
+    from app.demo_mode import enabled as demo_mode
+
+    return not demo_mode() and Barber.query.first() is None
 
 
 @auth_bp.route("/setup", methods=["GET", "POST"])

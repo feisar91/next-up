@@ -1,0 +1,58 @@
+# The public demo of Next Up (docs/technical/public-demo.md): the made-up shop
+# from `flask seed-demo`, open to anyone and erased and loaded again every hour.
+#   docker compose -f docker-compose.demo.yml up -d
+# It has its own project, container and volume names, and doesn't read the
+# usual variables, so it can sit next to a real install without touching it.
+name: next-up-demo
+
+services:
+  app:
+    image: ghcr.io/feisar91/next-up:${DEMO_VERSION:-latest}
+    container_name: next-up-demo-app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://checkin:checkin@postgres:5432/checkin
+      DEMO_MODE: "true"
+      DEMO_RESET_MINUTES: ${DEMO_RESET_MINUTES:-60}
+      # The demo shop's own timezone: its history and opening hours are in it.
+      TIMEZONE: ${DEMO_TIMEZONE:-UTC}
+      # Behind Caddy or Nginx, which handles HTTPS.
+      BEHIND_PROXY: "true"
+      SESSION_COOKIE_SECURE: "true"
+      # Everyone shares the demo logins, so one visitor's wrong guesses mustn't lock
+      # a login for everybody. The limit per address still applies.
+      LOGIN_MAX_FAILURES_PER_USER: "100000"
+    volumes:
+      - app_data:/data
+    ports:
+      # Only reachable through the web server in front of it.
+      - "127.0.0.1:${DEMO_PORT:-8010}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: next-up-demo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: checkin
+      POSTGRES_PASSWORD: checkin
+      POSTGRES_DB: checkin
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U checkin -d checkin"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+    name: next-up-demo-postgres-data
+  app_data:
+    name: next-up-demo-app-data
+
+networks:
+  default:
+    name: next-up-demo

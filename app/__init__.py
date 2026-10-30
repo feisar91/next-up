@@ -63,10 +63,16 @@ def create_app(config_class=Config):
     def inject_brand():
         from app.branding import get_brand, screen_version
 
+        from app import demo_mode
+
         brand = get_brand()
         # app_version is what long-running screens compare on reconnect (see
         # app/static/js/app-version.js): code version plus branding version.
-        return {"brand": brand, "app_version": screen_version(brand)}
+        return {
+            "brand": brand,
+            "app_version": screen_version(brand),
+            "demo": demo_mode.DemoInfo() if demo_mode.enabled() else None,
+        }
 
     from app.login_sessions import load_user
 
@@ -100,6 +106,11 @@ def create_app(config_class=Config):
         from app.background import start_background_checks
 
         start_background_checks(app)
+
+    if app.config["DEMO_MODE"]:
+        from app.demo_mode import check_request
+
+        app.before_request(check_request)
 
     @app.before_request
     def enforce_password_change():

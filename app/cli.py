@@ -31,6 +31,21 @@ def register_cli(app):
             f"with the password '{password}'."
         )
 
+    def _reset_demo():
+        from app.demo import DemoError
+        from app.demo_mode import reset_demo
+
+        try:
+            reset_demo()
+        except DemoError as error:
+            raise click.ClickException(str(error)) from None
+        click.echo("Loaded a fresh copy of the demo shop.")
+
+    @app.cli.command("demo-reset")
+    def demo_reset():
+        """Erase the public demo (DEMO_MODE=true) and load it again, as happens every hour."""
+        _reset_demo()
+
     @app.cli.command("bootstrap")
     def bootstrap():
         """First-run setup, run on every container start. Does nothing once any login exists.
@@ -38,7 +53,14 @@ def register_cli(app):
         Normally the owner creates the admin login in the browser (/setup). For an
         unattended install, set $ADMIN_PASSWORD and this creates an `admin` login with
         it instead, to be changed on first login. Creates no locations either way.
+
+        In the public demo (DEMO_MODE=true) it loads a fresh copy of the demo instead.
         """
+        from flask import current_app
+
+        if current_app.config["DEMO_MODE"]:
+            _reset_demo()
+            return
         if Barber.query.first():
             return
 

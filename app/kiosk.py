@@ -5,6 +5,7 @@ from flask import Blueprint, abort, redirect, render_template, request, session,
 from app import audit, db
 from app.announcements import current_announcement
 from app.branding import get_brand
+from app.demo_mode import KIOSK_ERROR_SESSION_KEY
 from app.models import Location, QueueEntry, utcnow
 from app.opening_hours import reopens_text
 from app.sockets import broadcast_queue, kiosk_barbers, queue_state
@@ -40,12 +41,15 @@ def check_in(location_slug, token):
 
     # Shown once: reloading the confirmation goes back to the check-in form.
     confirmation = session.pop(CONFIRMATION_SESSION_KEY, None)
+    # Why the public demo turned a check-in away (app/demo_mode.py), shown once too.
+    error = session.pop(KIOSK_ERROR_SESSION_KEY, None)
     return render_template(
         "kiosk.html",
         location=location,
         token=token,
         barbers=barbers,
         confirmation=confirmation,
+        error=error,
         max_group_size=MAX_GROUP_SIZE,
         reopens=reopens_text(location),
         announcement=current_announcement(location),

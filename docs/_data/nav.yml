@@ -18,3 +18,4 @@
   pages:
     - { title: "How it works", url: /technical/how-it-works/ }
     - { title: "Development and releases", url: /technical/development/ }
+    - { title: "Hosting a public demo", url: /technical/public-demo/ }
