@@ -1,6 +1,8 @@
+from unittest.mock import patch
+
 from app import db
 from app.kiosk import MAX_GROUP_SIZE
-from app.models import Location, QueueEntry
+from app.models import AdminAction, Location, QueueEntry
 from app.sockets import queue_state
 from tests.conftest import kiosk_url, login
 
@@ -285,3 +287,42 @@ def test_queue_updates_carry_the_preferred_barber_id(app, locations, barber):
 
         state = staff_queue_state(Location.query.filter_by(slug="main-street").one())
     assert state["waiting"][0]["preferred_barber_id"] == barber["id"]
+
+
+# Two barbers tapping the same customer at the same moment both get past the
+# route's lookup; only one change may land.
+
+
+def _waiting_entry(location_id, name="Jordan"):
+    entry = QueueEntry(location_id=location_id, customer_name=name, status=QueueEntry.STATUS_WAITING)
+    db.session.add(entry)
+    db.session.commit()
+    return entry
+
+
+def test_a_queue_change_only_lands_if_nobody_got_there_first(app, locations, barber, other_location_barber):
+    from app.staff import _move
+
+    entry = _waiting_entry(locations["main-street"])
+    # Both barbers' requests looked the customer up while they were waiting...
+    first_call = _move(entry, QueueEntry.STATUS_WAITING, status=QueueEntry.STATUS_IN_PROGRESS,
+                       called_by_barber_id=barber["id"])
+    # ...and the second update finds them already in the chair.
+    second_call = _move(entry, QueueEntry.STATUS_WAITING, status=QueueEntry.STATUS_IN_PROGRESS,
+                        called_by_barber_id=other_location_barber["id"])
+    remove = _move(entry, QueueEntry.STATUS_WAITING, status=QueueEntry.STATUS_CANCELLED)
+
+    assert (first_call, second_call, remove) == (True, False, False)
+    entry = db.session.get(QueueEntry, entry.id)
+    assert (entry.status, entry.called_by_barber_id) == (QueueEntry.STATUS_IN_PROGRESS, barber["id"])
+
+
+def test_the_barber_who_lost_the_race_is_told_and_nothing_is_logged(app, client, locations, barber):
+    login(client, barber["username"], barber["password"])
+    entry = _waiting_entry(locations["main-street"])
+
+    with patch("app.staff._move", return_value=False):
+        response = client.post(f"/staff/main-street/call/{entry.id}", follow_redirects=True)
+
+    assert "Jordan was just updated on another device, so nothing was changed." in response.data.decode()
+    assert AdminAction.query.filter_by(action="queue.call").count() == 0

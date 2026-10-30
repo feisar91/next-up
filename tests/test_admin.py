@@ -527,3 +527,18 @@ def test_usernames_differing_only_in_capitals_are_taken(app, client, admin_barbe
     # Changing the capitals of your own username is fine.
     client.post(f"/admin/barbers/{barber['id']}/edit", data={"name": "Alex", "username": "Alex"})
     assert db.session.get(Barber, barber["id"]).username == "Alex"
+
+
+def test_the_timezone_list_is_read_once(app, client, admin_barber):
+    # Reading every zone name from disk takes milliseconds, and one admin page
+    # looks the timezone up dozens of times.
+    from unittest.mock import patch
+
+    from app import settings
+
+    settings._zone_names.cache_clear()
+    login(client, admin_barber["username"], admin_barber["password"])
+    with patch.object(settings, "available_timezones", wraps=settings.available_timezones) as listing:
+        client.get("/admin/")
+        client.get("/admin/")
+    assert listing.call_count <= 1

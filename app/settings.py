@@ -10,11 +10,19 @@ FALLBACK_TIMEZONE = "UTC"
 
 
 @lru_cache(maxsize=1)
+def _zone_names():
+    """Every zone name this system knows. Listing them reads the timezone files
+    (a few milliseconds), and one page can look up the timezone dozens of times,
+    so it's read once per process."""
+    return frozenset(available_timezones())
+
+
+@lru_cache(maxsize=1)
 def timezone_choices():
     """Region/City zone names for the admin picker, skipping legacy aliases like 'EST'."""
     return sorted(
         name
-        for name in available_timezones()
+        for name in _zone_names()
         if "/" in name and not name.startswith(("Etc/", "posix/", "right/", "SystemV/"))
     )
 
@@ -22,7 +30,7 @@ def timezone_choices():
 def default_timezone_name():
     """The TIMEZONE env var (Config.DEFAULT_TIMEZONE), if it's a real zone."""
     name = current_app.config.get("DEFAULT_TIMEZONE")
-    return name if name in available_timezones() else FALLBACK_TIMEZONE
+    return name if name in _zone_names() else FALLBACK_TIMEZONE
 
 
 def timezone_is_set():
@@ -31,7 +39,7 @@ def timezone_is_set():
 
 def get_timezone_name():
     setting = db.session.get(Setting, "timezone")
-    if setting and setting.value in available_timezones():
+    if setting and setting.value in _zone_names():
         return setting.value
     return default_timezone_name()
 

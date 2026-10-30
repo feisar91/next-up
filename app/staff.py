@@ -258,6 +258,23 @@ def set_break(location_slug):
     return redirect(url_for("staff.dashboard", location_slug=location.slug))
 
 
+def _move(entry, from_status, **changes):
+    """Apply `changes` to `entry` only if it's still `from_status`, and commit.
+    Returns whether this request made the change. Two barbers tapping the same
+    customer at the same moment both get past the lookup, so the database decides:
+    the second update finds the status already changed and matches nothing."""
+    changed = (
+        QueueEntry.query.filter_by(id=entry.id, status=from_status).update(changes, synchronize_session=False)
+    )
+    db.session.commit()
+    return changed == 1
+
+
+def _beaten_to_it(location, entry):
+    flash(f"{entry.customer_name} was just updated on another device, so nothing was changed.", "error")
+    return redirect(url_for("staff.dashboard", location_slug=location.slug))
+
+
 @staff_bp.route("/staff/<location_slug>/call/<int:entry_id>", methods=["POST"])
 @login_required
 def call_customer(location_slug, entry_id):
@@ -266,10 +283,14 @@ def call_customer(location_slug, entry_id):
         id=entry_id, location_id=location.id, status=QueueEntry.STATUS_WAITING
     ).first_or_404()
 
-    entry.status = QueueEntry.STATUS_IN_PROGRESS
-    entry.called_at = datetime.now(timezone.utc)
-    entry.called_by_barber_id = current_user.id
-    db.session.commit()
+    if not _move(
+        entry,
+        QueueEntry.STATUS_WAITING,
+        status=QueueEntry.STATUS_IN_PROGRESS,
+        called_at=datetime.now(timezone.utc),
+        called_by_barber_id=current_user.id,
+    ):
+        return _beaten_to_it(location, entry)
 
     broadcast_queue(location)
     audit.record(
@@ -288,9 +309,10 @@ def complete_customer(location_slug, entry_id):
         id=entry_id, location_id=location.id, status=QueueEntry.STATUS_IN_PROGRESS
     ).first_or_404()
 
-    entry.status = QueueEntry.STATUS_DONE
-    entry.completed_at = datetime.now(timezone.utc)
-    db.session.commit()
+    if not _move(
+        entry, QueueEntry.STATUS_IN_PROGRESS, status=QueueEntry.STATUS_DONE, completed_at=datetime.now(timezone.utc)
+    ):
+        return _beaten_to_it(location, entry)
 
     broadcast_queue(location)
     audit.record(
@@ -309,9 +331,10 @@ def remove_customer(location_slug, entry_id):
         id=entry_id, location_id=location.id, status=QueueEntry.STATUS_WAITING
     ).first_or_404()
 
-    entry.status = QueueEntry.STATUS_CANCELLED
-    entry.removed_at = datetime.now(timezone.utc)
-    db.session.commit()
+    if not _move(
+        entry, QueueEntry.STATUS_WAITING, status=QueueEntry.STATUS_CANCELLED, removed_at=datetime.now(timezone.utc)
+    ):
+        return _beaten_to_it(location, entry)
 
     broadcast_queue(location)
     audit.record(
@@ -342,12 +365,11 @@ def undo_finish(location_slug, entry_id):
 
     undone_complete = entry.status == QueueEntry.STATUS_DONE
     if undone_complete:
-        entry.status = QueueEntry.STATUS_IN_PROGRESS
-        entry.completed_at = None
+        moved = _move(entry, QueueEntry.STATUS_DONE, status=QueueEntry.STATUS_IN_PROGRESS, completed_at=None)
     else:
-        entry.status = QueueEntry.STATUS_WAITING
-        entry.removed_at = None
-    db.session.commit()
+        moved = _move(entry, QueueEntry.STATUS_CANCELLED, status=QueueEntry.STATUS_WAITING, removed_at=None)
+    if not moved:
+        return _beaten_to_it(location, entry)
 
     broadcast_queue(location)
     audit.record(
